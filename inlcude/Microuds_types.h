@@ -201,14 +201,12 @@ typedef struct
 {
     MicroUDS_Service_t id;         // 服务id
     MicroUDS_UniversalFunc_t func; // 功能函数
-    uint8_t count; // 服务个数
 } MicroUDS_ServiceTable_t;
 
 typedef struct
 {
     uint8_t id;                    // 会话id
     MicroUDS_UniversalFunc_t func; // 功能函数
-    uint8_t count;                 // 会话个数
 } MicroUDS_SessionTable_t;         // 会话表
 
 //=====================================================

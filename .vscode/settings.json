@@ -58,6 +58,8 @@
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "files.associations": {
     "*.json": "jsonc",
-    "microuds_isotp.h": "c"
+    "microuds_isotp.h": "c",
+    "microuds.h": "c",
+    "microuds_types.h": "c"
   }
 }
