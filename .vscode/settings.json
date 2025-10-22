@@ -64,6 +64,9 @@
     "isotp.h": "c",
     "microuds_conf.h": "c",
     "stdbool.h": "c",
-    "isotp_types.h": "c"
+    "isotp_types.h": "c",
+    "string.h": "c",
+    "isotp_com.h": "c",
+    "stdint.h": "c"
   }
 }

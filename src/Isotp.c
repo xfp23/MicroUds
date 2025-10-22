@@ -1,95 +1,151 @@
 #include "Isotp.h"
 
-Isotp_Obj Isotp = {0};
+static Isotp_Obj Isotp = {0};
 
-/**
- * @brief 打包单帧 (Single Frame Encode)
- */
-Isotp_Sta_t Isotp_PackSingleFrame(uint8_t *frame, const uint8_t *src, size_t size)
+Isotp_Handle_t Isotp_Handle = &Isotp;
+
+Isotp_Sta_t Isotp_PackSingleFrame(uint8_t *Dst, const uint8_t *Src, size_t size)
 {
-    if (frame == NULL || src == NULL)
+    if (Dst == NULL || Src == NULL)
+        return ISOTP_ERR_PARAM;
+
+    if (size == 0 || size > 7)
+        return ISOTP_ERR_LENGTH;
+    ISOTP_CLEARSF();
+    ISOTP_PACKSF(Src, size);
+
+    memcpy(Dst, Isotp_Handle->SF.data, 8);
+
+    return ISOTP_OK;
+}
+
+Isotp_Sta_t Isotp_UnpackSingleFrame(Isotp_SingleFrame_t *Dst, const uint8_t *Src)
+{
+    if (!Dst || !Src)
+        return ISOTP_ERR_PARAM;
+
+    memcpy(Dst->data, Src, 8);
+
+    if (Dst->byte.PCIType != FRAME_SINGLE)
+    {
+        memset(Dst->data, 0, 8);
+        return ISOTP_ERR_TYPE;
+    }
+
+    if (Dst->byte.PCI_DL > 7)
+    {
+        memset(Dst->data, 0, 8);
+        return ISOTP_ERR_LENGTH;
+    }
+
+    return ISOTP_OK;
+}
+
+Isotp_Sta_t Isotp_PackFirstFrame(uint8_t *Dst, const uint8_t *Src, size_t size)
+{
+    if (Dst == NULL || Src == NULL)
+        return ISOTP_ERR_PARAM;
+
+    if (size <= 7 || size > 0xFFF) // FF 只用于 >7 字节的情况
+        return ISOTP_ERR_LENGTH;
+
+    memset(Isotp_Handle->FF.data, 0, sizeof(Isotp_Handle->FF.data));
+
+    Isotp_Handle->FF.byte.PCIType = FRAME_FIRST;
+    Isotp_Handle->FF.byte.FF_DL_H = (size >> 8) & 0x0F;
+    Isotp_Handle->FF.byte.FF_DL_L = size & 0xFF;
+
+    memcpy(Isotp_Handle->FF.byte.Payload, Src, 6);
+    memcpy(Dst, Isotp_Handle->FF.data, 8);
+
+    return ISOTP_OK;
+}
+
+Isotp_Sta_t Isotp_UnpackFirstFrame(Isotp_FirstFrame_t *Dst, const uint8_t *Src)
+{
+    if (Dst == NULL || Src == NULL)
+        return ISOTP_ERR_PARAM;
+
+    memcpy(Dst->data, Src, 8);
+
+    if (Dst->byte.PCIType != FRAME_FIRST)
+    {
+        memset(Dst->data, 0, 8);
+        return ISOTP_ERR_TYPE;
+    }
+
+    return ISOTP_OK;
+}
+
+Isotp_Sta_t Isotp_PackFlowControlFrame(uint8_t *Dst, uint8_t bs, uint8_t STime, Isotp_FlowStatus_t fs)
+{
+    if (Dst == NULL)
+        return ISOTP_ERR_PARAM;
+
+    memset(Isotp_Handle->FC.data, 0, 8);
+    Isotp_Handle->FC.byte.PCIType = FRAME_FLOWCONTROL;
+    Isotp_Handle->FC.byte.BS = bs;
+    Isotp_Handle->FC.byte.FS = fs;
+    Isotp_Handle->FC.byte.STmin = STime;
+    memcpy(Dst, Isotp_Handle->FC.data, 8);
+
+    return ISOTP_OK;
+}
+
+Isotp_Sta_t Isotp_UnpackFlowControlFrame(Isotp_FlowControlFrame_t *Dst, uint8_t *Src)
+{
+    if (Dst == NULL)
+        return ISOTP_ERR_PARAM;
+
+    memcpy(Dst->data, Src, 8);
+    if (Dst->byte.PCIType != FRAME_FLOWCONTROL)
+    {
+        memset(Dst->data, 0, 8);
+        return ISOTP_ERR_TYPE;
+    }
+
+    return ISOTP_OK;
+}
+
+Isotp_Sta_t Isotp_PackConsecutiveFrame(uint8_t *Dst, uint8_t *Src, size_t size, uint8_t SN)
+{
+    if (Dst == NULL || Src == NULL)
         return ISOTP_ERR_PARAM;
 
     if (size == 0 || size > 7)
         return ISOTP_ERR_LENGTH;
 
-    memset(frame, 0, 8);
-    frame[0] = (uint8_t)(0x00 | (size & 0x0F));  // SF PCI
-    memcpy(&frame[1], src, size);
-
-    return ISOTP_OK;
-}
-
-
-Isotp_Sta_t Isotp_UnpackSingleFrame(const uint8_t *frame, uint8_t *dst, size_t *size)
-{
-    if (frame == NULL || dst == NULL || size == NULL)
+    if (SN > 0x0F)
         return ISOTP_ERR_PARAM;
 
-    uint8_t len = frame[0] & 0x0F;  // 低4位是长度
-    if (len == 0 || len > 7)
-        return ISOTP_ERR_LENGTH;
+    memset(Isotp_Handle->CF.data, 0, 8);
 
-    memcpy(dst, &frame[1], len);
-    *size = len;
+    Isotp_Handle->CF.byte.PCIType = FRAME_CONSECUTIVE;
+    Isotp_Handle->CF.byte.SN = SN;
+    memcpy(Isotp_Handle->CF.byte.Payload, Src, size);
 
+    memcpy(Dst, Isotp_Handle->CF.data, 8);
     return ISOTP_OK;
 }
 
-
-Isotp_Sta_t Isotp_PackFirstFrame(uint8_t *frame, const uint8_t *src, size_t size)
+Isotp_Sta_t Isotp_UnPackConsecutiveFrame(Isotp_ConsecutiveFrame_t *Dst, uint8_t *Src)
 {
-    if (frame == NULL || src == NULL)
+    if (Dst == NULL || Src == NULL)
         return ISOTP_ERR_PARAM;
 
-    if (size <= 7 || size > 4095) // 首帧仅用于 >7 且 <= 4095 字节
-        return ISOTP_ERR_LENGTH;
+    memcpy(Dst->data, Src, 8);
 
-    memset(frame, 0, 8);
+    if (Dst->byte.PCIType != FRAME_CONSECUTIVE)
+    {
+        memset(Dst->data, 0, 8);
+        return ISOTP_ERR_TYPE;
+    }
 
-    // 第一字节：高4位0x1表示FirstFrame，低4位是总长度高4位
-    frame[0] = 0x10 | ((size >> 8) & 0x0F);
-
-    // 第二字节：长度低8位
-    frame[1] = (uint8_t)(size & 0xFF);
-
-    // 后6字节：放前6个数据
-    memcpy(&frame[2], src, 6);
-
-    return ISOTP_OK;
-}
-
-/**
- * @brief 解析首帧 (First Frame Decode)
- * @param dst            输出的数据缓冲区（至少 6 字节）
- * @param frame          输入的CAN帧（8字节）
- * @param total_size_out 输出：完整数据总长度（由帧头解析得出）
- * @return 状态码
- */
-Isotp_Sta_t Isotp_UnpackFirstFrame(uint8_t *dst, const uint8_t *frame, size_t *total_size_out)
-{
-    if (dst == NULL || frame == NULL || total_size_out == NULL)
-        return ISOTP_ERR_PARAM;
-
-    // 第一字节：高4位=0x1 → First Frame
-    uint8_t pci_type = (frame[0] & 0xF0) >> 4;
-    if (pci_type != 0x1)
-        return ISOTP_ERR_LENGTH; // 不是首帧
-
-    // 提取总长度（12 bit）
-    uint16_t total_len = ((frame[0] & 0x0F) << 8) | frame[1];
-    if (total_len <= 7 || total_len > 4095)
-        return ISOTP_ERR_LENGTH;
-
-    // 前6个字节数据复制出去
-    memcpy(dst, &frame[2], 6);
-
-    *total_size_out = total_len;
+    if (Dst->byte.SN > 0x0F)
+    {
+        memset(Dst->data, 0, 8);
+        return ISOTP_ERR_FRAME;
+    }
 
     return ISOTP_OK;
-}
-
-Isotp_Sta_t Isotp_PackFlowControlFram(uint8_t *dst,const )
-{
-
 }
