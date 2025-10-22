@@ -190,9 +190,10 @@ typedef int (*MicroUDS_ReveiveFunc_t)(uint8_t *buffer,size_t size);
 
 /**
  * @brief 通用功能函数
+ * @param param 通用参数Userdata
  *
  */
-typedef void (*MicroUDS_UniversalFunc_t)(void);
+typedef void (*MicroUDS_GeneralFunc_t)(void *param);
 
 //====================================================
 // 表
@@ -200,13 +201,13 @@ typedef void (*MicroUDS_UniversalFunc_t)(void);
 typedef struct
 {
     MicroUDS_Service_t id;         // 服务id
-    MicroUDS_UniversalFunc_t func; // 功能函数
+    MicroUDS_GeneralFunc_t func; // 功能函数
 } MicroUDS_ServiceTable_t;
 
 typedef struct
 {
     uint8_t id;                    // 会话id
-    MicroUDS_UniversalFunc_t func; // 功能函数
+    MicroUDS_GeneralFunc_t func; // 功能函数
 } MicroUDS_SessionTable_t;         // 会话表
 
 //=====================================================
@@ -215,7 +216,7 @@ typedef struct
 typedef struct MicroUDS_SessionNode_t
 {
     uint8_t id; // 会话id
-    MicroUDS_UniversalFunc_t func;
+    MicroUDS_GeneralFunc_t func;
     MicroUDS_SessionNode_t *next;
 } MicroUDS_SessionNode_t; // 会话节点
 

@@ -60,6 +60,10 @@
     "*.json": "jsonc",
     "microuds_isotp.h": "c",
     "microuds.h": "c",
-    "microuds_types.h": "c"
+    "microuds_types.h": "c",
+    "isotp.h": "c",
+    "microuds_conf.h": "c",
+    "stdbool.h": "c",
+    "isotp_types.h": "c"
   }
 }
