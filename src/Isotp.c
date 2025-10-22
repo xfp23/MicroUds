@@ -11,9 +11,12 @@ Isotp_Sta_t Isotp_PackSingleFrame(uint8_t *Dst, const uint8_t *Src, size_t size)
 
     if (size == 0 || size > 7)
         return ISOTP_ERR_LENGTH;
-    ISOTP_CLEARSF();
-    ISOTP_PACKSF(Src, size);
 
+    memset(Isotp_Handle->SF.data, 0, sizeof(Isotp_Handle->SF.data));
+
+    Isotp_Handle->SF.byte.PCIType = FRAME_SINGLE;
+    Isotp_Handle->SF.byte.PCI_DL = (uint8_t)(size & 0x0F);
+    memcpy(Isotp_Handle->SF.byte.Payload, Src, size);
     memcpy(Dst, Isotp_Handle->SF.data, 8);
 
     return ISOTP_OK;

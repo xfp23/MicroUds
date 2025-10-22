@@ -17,7 +17,6 @@
  */
 
 #include "Isotp_types.h"
-#include "Isotp_com.h"
 
 #ifdef __cplusplus
 extern "C"
