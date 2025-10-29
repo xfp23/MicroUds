@@ -2,7 +2,7 @@
 
 static Isotp_Obj Isotp = {0};
 
-Isotp_Handle_t Isotp_Handle = &Isotp;
+const Isotp_Handle_t Isotp_Handle = &Isotp;
 
 Isotp_Sta_t Isotp_PackSingleFrame(uint8_t *Dst, const uint8_t *Src, size_t size)
 {

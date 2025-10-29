@@ -1,0 +1,35 @@
+# CLion
+.idea/
+*.iml
+
+# CMake 构建输出
+cmake-build-debug/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# 编译生成文件
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+*.elf
+*.map
+*.out
+*.bin
+
+# 临时文件
+*.log
+*.tmp
+*.swp
+*.DS_Store
+
+# 测试或临时目录
+Testing/Temporary/
+
+.vscode/
+
+build/

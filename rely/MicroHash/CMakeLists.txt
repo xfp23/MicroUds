@@ -1,20 +1,23 @@
 cmake_minimum_required(VERSION 4.0.2)
 
 # 工程名称
-project(MicroUds C)
+project(MicroHash C)
 
 # C 标准
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD 99)
 
 # 自动查找所有源文件
 file(GLOB_RECURSE SRC_FILES
         "${CMAKE_SOURCE_DIR}/src/*.c"
         "${CMAKE_SOURCE_DIR}/include/*.h"
-        "${CMAKE_SOURCE_DIR}/rely/*/*.h"
 )
 
 # 添加可执行文件（仅用于索引或 PC 测试）
-add_executable(${PROJECT_NAME} ${SRC_FILES})
+add_executable(${PROJECT_NAME} ${SRC_FILES}
+        src/MicroHash.c
+        include/MicroHash.h
+        include/MicroHash_types.h
+        include/MicroHash_conf.h)
 
 # 添加 include 路径
 include_directories(

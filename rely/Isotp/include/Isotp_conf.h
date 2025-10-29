@@ -17,6 +17,8 @@ extern "C"
 {
 #endif
 
+#define ISOTP_VERSION_MARJ "0.0.1"
+
 // 位域低位在字节低地址，高位在字节高地址。
 #define ISOTP_LITTLE_ENDIAN_BITFIELD 1
 

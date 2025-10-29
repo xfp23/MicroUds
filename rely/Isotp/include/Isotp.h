@@ -26,7 +26,7 @@ extern "C"
 /**
  * @brief Global ISO-TP protocol handle.
  */
-extern Isotp_Handle_t Isotp_Handle;
+extern const Isotp_Handle_t Isotp_Handle;
 
 /**
  * @brief Pack an ISO-TP Single Frame (SF) into a CAN frame buffer.

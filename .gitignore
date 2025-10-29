@@ -1,1 +1,41 @@
-/.vscode/
+# CMake 构建文件
+cmake-build-debug-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cbp
+*.user
+*.ncb
+*.suo
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.VC.opendb
+
+# CLion IDE 文件
+.idea/
+*.iml
+*.iws
+
+# VSCode IDE 文件
+.vscode/
+
+# 输出目录
+bin/
+build/
+Debug/
+Release/
+
+# 临时文件
+*.log
+*.obj
+*.o
+*.exe
+*.elf
+*.map
+*.out
+*.d
+
+# 文档或其他不想提交的
+*.tmp

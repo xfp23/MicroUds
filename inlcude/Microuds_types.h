@@ -195,53 +195,32 @@ typedef int (*MicroUDS_ReveiveFunc_t)(uint8_t *buffer,size_t size);
  */
 typedef void (*MicroUDS_GeneralFunc_t)(void *param);
 
-//====================================================
-// 表
-//===================================================
-typedef struct
+typedef struct 
 {
-    MicroUDS_Service_t id;         // 服务id
-    MicroUDS_GeneralFunc_t func; // 功能函数
-} MicroUDS_ServiceTable_t;
-
-typedef struct
-{
-    uint8_t id;                    // 会话id
-    MicroUDS_GeneralFunc_t func; // 功能函数
-} MicroUDS_SessionTable_t;         // 会话表
-
-//=====================================================
-// 链表
-//======================================================
-typedef struct MicroUDS_SessionNode_t
-{
-    uint8_t id; // 会话id
+    uint8_t id;
     MicroUDS_GeneralFunc_t func;
-    MicroUDS_SessionNode_t *next;
-} MicroUDS_SessionNode_t; // 会话节点
+    void *param;
+}Microuds_RegisterTable_t; // 注册表
 
-typedef struct MicroUDS_ServiceNode_t
+typedef struct Microuds_Session_t
 {
-    MicroUDS_Service_t id; // 服务id
-    MicroUDS_SessionNode_t *Session;
-    MicroUDS_ServiceNode_t *next;
-} MicroUDS_ServiceNode_t; // 服务节点
+    uint8_t ssid;
+    void *param;
+    MicroUDS_GeneralFunc_t func;
+    Microuds_Session_t *next; // 下一个会话
+}Microuds_Session_t;
 
-typedef struct
+typedef struct 
 {
-    struct
-    {
-        MicroUDS_TransmitFunc_t Transmit; // 函数指针
-        MicroUDS_ReveiveFunc_t ReceiveCb; // 接收回调
-    } func;                               // 函数
-} MicroUDS_Conf_t;                        // 配置
+    uint8_t sid;
+    Microuds_Session_t *Session; // 会话
+}Microuds_Serive_t; // 服务
+
 
 typedef struct
 {
     uint32_t Tick; // 时基
-    MicroUDS_TransmitFunc_t Transmit; // 发送
-    MicroUDS_ReveiveFunc_t ReceiveCb; // 接收回调
-    MicroUDS_ServiceNode_t *Service; // 服务使用节点树查找会话链表，由用户通过API启用服务，并向服务添加会话
+
 } MicroUDS_Obj;
 
 typedef MicroUDS_Obj *MicroUDS_Handle_t;

@@ -24,11 +24,11 @@ extern "C"
 
 typedef enum
 {
-    ISOTP_OK = 0,
-    ISOTP_ERR_PARAM,
-    ISOTP_ERR_LENGTH,
-    ISOTP_ERR_TYPE,
-    ISOTP_ERR_FRAME,
+    ISOTP_OK = 0, // 成功
+    ISOTP_ERR_PARAM, // 参数错误
+    ISOTP_ERR_LENGTH, // 长度错误
+    ISOTP_ERR_TYPE, // 类型错误
+    ISOTP_ERR_FRAME, // 帧错误
 } Isotp_Sta_t;
 
 typedef enum
