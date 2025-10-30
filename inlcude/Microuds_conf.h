@@ -17,6 +17,7 @@ extern "C"
 {
 #endif
 
+#define MICROUDS_MEMORY_SIZE 64
 
 #ifdef __cplusplus
 }

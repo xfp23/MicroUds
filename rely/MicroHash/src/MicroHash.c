@@ -21,7 +21,7 @@
  */
 static inline uint32_t getIndex(uint32_t key, size_t buckSize)
 {
-    return (uint32_t)((key * 2654435761u) >> (32 - buckSize));
+    return (uint32_t)((key * 1101524993u) % buckSize);
 }
 
 MicroHash_Sta_t MicroHash_Init(MicroHash_Handle_t *handle, MicroHash_Conf_t *conf)

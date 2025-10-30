@@ -15,6 +15,8 @@
 #include "stdint.h"
 #include "string.h"
 #include "stdlib.h"
+#include "Isotp.h"
+#include "MicroHash.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -26,6 +28,9 @@ typedef enum
     MICROUDS_OK,
     MICROUDS_ERR,
     MICROUDS_TIMEOUT,
+    MICROUDS_ERR_MEMORY,
+    MICROUDS_ERR_HASH,
+    MICROUDS_ERR_PARAM,
 } MicroUDS_Sta_t;
 
 //====================================================
@@ -164,7 +169,7 @@ typedef enum
     UDS_REQUEST_TRANSFER_EXIT = 0x37,        // 结束传输
     UDS_TESTER_PRESENT = 0x3E,               // 测试仪在线（心跳）
     UDS_LINK_CONTROL = 0x87,                 // 链路控制
-} MicroUDS_Service_t;                        // 服务枚举
+} MicroUDS_Sid_t;                        // 服务枚举
 
 //====================================================
 // 函数
@@ -186,7 +191,7 @@ typedef int (*MicroUDS_TransmitFunc_t)(uint8_t *data, size_t size);
  * @return 1:失败 0：成功
  * 
  */
-typedef int (*MicroUDS_ReveiveFunc_t)(uint8_t *buffer,size_t size);
+typedef int (*MicroUDS_ReceiveFunc_t)(uint8_t *buffer,size_t size);
 
 /**
  * @brief 通用功能函数
@@ -197,30 +202,68 @@ typedef void (*MicroUDS_GeneralFunc_t)(void *param);
 
 typedef struct 
 {
-    uint8_t id;
+    size_t MemorySize;
+    size_t RecordSize; // 记录大小
+    MicroUDS_TransmitFunc_t Transmit; // 发送函数
+    MicroUDS_ReceiveFunc_t Reveive; // 接收函数
+
+}MicroUDS_Conf_t;
+
+typedef struct 
+{
+    MicroUDS_Sid_t sid; // 通用id
     MicroUDS_GeneralFunc_t func;
     void *param;
-}Microuds_RegisterTable_t; // 注册表
+}MicroUDS_ServiceTable_t; // 注册服务表,用户声明此类型数组来注册sid
 
-typedef struct Microuds_Session_t
+typedef struct
+{
+    uint8_t ssid;
+    MicroUDS_GeneralFunc_t func;
+    void *param;
+}MicroUDS_SessionTable_t; // 注册会话表，用户声明此类型数组来注册ssid
+
+typedef struct MicroUDS_Session_t
 {
     uint8_t ssid;
     void *param;
     MicroUDS_GeneralFunc_t func;
-    Microuds_Session_t *next; // 下一个会话
-}Microuds_Session_t;
+    MicroUDS_Session_t *next; // 下一个会话 多个会话
+}MicroUDS_Session_t; 
 
 typedef struct 
 {
     uint8_t sid;
-    Microuds_Session_t *Session; // 会话
-}Microuds_Serive_t; // 服务
+    MicroUDS_Session_t *Session; // 会话
+    void *param;
+    MicroUDS_GeneralFunc_t func;
+}Microuds_Service_t; // 服务
 
+typedef struct 
+{
+    uint8_t *data;
+    size_t count;
+}MicroUDS_Record_t;
+
+typedef struct 
+{
+    Isotp_SingleFrame_t SF;      // 单帧
+    Isotp_FirstFrame_t FF;       // 首帧
+    Isotp_FlowControlFrame_t FC; // 流控帧
+    Isotp_ConsecutiveFrame_t CF; // 连续帧
+}MicroUDS_Isotp_t;
 
 typedef struct
 {
-    uint32_t Tick; // 时基
-
+    volatile uint32_t Tick; // 时基
+    Microuds_Service_t Serive; // 服务
+    MicroHash_Handle_t hashTable; // 哈希表
+    volatile uint8_t sid; // 当前sid
+    volatile uint8_t ssid; // 当前会话
+    MicroUDS_TransmitFunc_t Transmit;
+    MicroUDS_ReceiveFunc_t Receive;
+    MicroUDS_Record_t Record; // 记录
+    MicroUDS_Isotp_t Recbuf; // 接收帧缓冲区
 } MicroUDS_Obj;
 
 typedef MicroUDS_Obj *MicroUDS_Handle_t;

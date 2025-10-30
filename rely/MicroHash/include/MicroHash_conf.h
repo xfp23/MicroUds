@@ -18,21 +18,9 @@ extern  "C"
 
 #define MICROHASH_VERSION_MACR "0.0.1"
 
-#define MICROHASH_IDBITS 16
+#define MICROHASH_IDBITS 8
 
 #define MICROHASH_BUCKETS_SIZE(x) (1u << x)
-
-#if MICROHASH_IDBITS == 8
-typedef uint8_t MicroHash_key_t;
-#elif MICROHASH_IDBITS == 16
-typedef uint16_t MicroHash_key_t;
-#elif MICROHASH_IDBITS == 32
-typedef uint32_t MicroHash_key_t;
-#elif MICROHASH_IDBITS == 64
-typedef uint64_t MicroHash_key_t;
-#else
-#error "Unsupported MICROHASH_IDBITS"
-#endif
 
 
 #ifdef __cplusplus

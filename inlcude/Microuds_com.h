@@ -4,18 +4,25 @@
 /**
  * @file MicroUds_com.h
  * @author https://github.com/xfp23
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2025-10-21
- * 
+ *
  * @copyright Copyright (c) 2025
- * 
+ *
  */
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+
+#define MICROUDS_CHECKPTR(ptr)         \
+    do                                 \
+    {                                  \
+        if (ptr == NULL)               \
+            return MICROUDS_ERR_PARAM; \
+    } while (0)
 
 #ifdef __cplusplus
 }

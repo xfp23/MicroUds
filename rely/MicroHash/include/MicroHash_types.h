@@ -28,6 +28,18 @@ typedef enum {
 
 }MicroHash_Sta_t;
 
+#if MICROHASH_IDBITS == 8
+typedef uint8_t MicroHash_key_t;
+#elif MICROHASH_IDBITS == 16
+typedef uint16_t MicroHash_key_t;
+#elif MICROHASH_IDBITS == 32
+typedef uint32_t MicroHash_key_t;
+#elif MICROHASH_IDBITS == 64
+typedef uint64_t MicroHash_key_t;
+#else
+#error "Unsupported MICROHASH_IDBITS"
+#endif
+
 typedef struct MicroHash_Node_t
 {
     MicroHash_key_t key; // 哈希值
@@ -37,7 +49,7 @@ typedef struct MicroHash_Node_t
 
 typedef struct
 {
-    size_t buckSize;
+    size_t buckSize; // 桶大小
 }MicroHash_Conf_t;
 
 typedef struct {
