@@ -31,6 +31,7 @@ typedef enum
     MICROUDS_ERR_MEMORY,
     MICROUDS_ERR_HASH,
     MICROUDS_ERR_PARAM,
+    MICROUDS_ERR_TRANS,
 } MicroUDS_Sta_t;
 
 //====================================================
@@ -42,7 +43,7 @@ typedef enum
     UDS_SESSION_PROGRAMMING = 0x02, // 编程会话 (Programming Session)
     UDS_SESSION_EXTENDED = 0x03,    // 扩展会话 (Extended Session)
     UDS_SESSION_SAFETY = 0x04,      // 安全会话 (OEM自定义)
-} MICROUDS_SessionControl_t;
+} MicroUDS_SessionControl_t;
 
 //====================================================
 // 0x11 - ECU Reset (ECU复位)
@@ -54,7 +55,7 @@ typedef enum
     UDS_RESET_SOFT = 0x03,        // 软件复位
     UDS_RESET_ENABLE_RPD = 0x04,  // 启用快速掉电 (Rapid Power Down)
     UDS_RESET_DISABLE_RPD = 0x05, // 禁用快速掉电
-} MICROUDS_EcuReset_t;
+} MicroUDS_EcuReset_t;
 
 //====================================================
 // 0x28 - Communication Control (通信控制)
@@ -65,7 +66,7 @@ typedef enum
     UDS_COMM_DISABLE_TX = 0x01,    // 禁止发送
     UDS_COMM_DISABLE_RX = 0x02,    // 禁止接收
     UDS_COMM_DISABLE_TX_RX = 0x03, // 禁止收发
-} MICROUDS_CommControl_t;
+} MicroUDS_CommControl_t;
 
 //====================================================
 // 0x31 - Routine Control (例行任务控制)
@@ -75,7 +76,7 @@ typedef enum
     UDS_ROUTINE_START = 0x01,          // 启动例行任务
     UDS_ROUTINE_STOP = 0x02,           // 停止例行任务
     UDS_ROUTINE_REQUEST_RESULT = 0x03, // 请求例行任务结果
-} MICROUDS_RoutineControl_t;
+} MicroUDS_RoutineControl_t;
 
 //====================================================
 // 0x3E - Tester Present (测试仪心跳)
@@ -83,7 +84,7 @@ typedef enum
 typedef enum
 {
     UDS_TESTER_PRESENT_ALIVE = 0x00, // 心跳保持会话
-} MICROUDS_TesterPresent_t;
+} MicroUDS_TesterPresent_t;
 
 //====================================================
 // 0x87 - Link Control (链路控制)
@@ -93,7 +94,7 @@ typedef enum
     UDS_LINK_SETUP = 0x01,    // 设置通信链路
     UDS_LINK_VERIFY = 0x02,   // 验证链路
     UDS_LINK_ACTIVATE = 0x03, // 激活链路
-} MICROUDS_LinkControl_t;
+} MicroUDS_LinkControl_t;
 
 //====================================================
 // 0x27 - Security Access (安全访问)
@@ -106,7 +107,7 @@ typedef enum
     UDS_SEC_SEND_KEY_LVL2 = 0x04, // 发送密钥 Level 2
     UDS_SEC_REQ_SEED_LVL3 = 0x05, // 请求种子 Level 3
     UDS_SEC_SEND_KEY_LVL3 = 0x06, // 发送密钥 Level 3
-} MICROUDS_SecurityAccess_t;
+} MicroUDS_SecurityAccess_t;
 
 /**
  * @brief UDS 负响应码（Negative Response Code, NRC）
@@ -114,6 +115,8 @@ typedef enum
  */
 typedef enum
 {
+    UDS_NRC_SUCCESS = 0x00,                    // 成功，正响应
+    UDS_NRC_NO = -1,                           // 不做任何响应
     UDS_NRC_GENERAL_REJECT = 0x10,            // 通用拒绝（General Reject）
     UDS_NRC_SERVICE_NOT_SUPPORTED = 0x11,     // 服务不支持（Service Not Supported）
     UDS_NRC_SUBFUNCTION_NOT_SUPPORTED = 0x12, // 子功能不支持（SubFunction Not Supported）
@@ -146,7 +149,7 @@ typedef enum
     UDS_NRC_TEMP_TOO_LOW = 0x87,                             // 温度过低（Temperature Too Low）
     UDS_NRC_VOLTAGE_TOO_HIGH = 0x88,                         // 电压过高（Voltage Too High）
     UDS_NRC_VOLTAGE_TOO_LOW = 0x89,                          // 电压过低（Voltage Too Low）
-} MicroUds_NegativeResponseCode_t;
+} MicroUDS_NRC_t;
 
 typedef enum
 {
@@ -171,6 +174,14 @@ typedef enum
     UDS_LINK_CONTROL = 0x87,                 // 链路控制
 } MicroUDS_Sid_t;                        // 服务枚举
 
+
+typedef enum
+{
+    UDS_ACTIVE_NO,  // 不激活
+    UDS_ACTIVE_SIGNAL, // 单帧激活
+    UDS_ACTIVE_MULTI, // 多帧激活
+}MicroUDS_Active_t;
+
 //====================================================
 // 函数
 //====================================================
@@ -183,29 +194,22 @@ typedef enum
  */
 typedef int (*MicroUDS_TransmitFunc_t)(uint8_t *data, size_t size);
 
-/**
- * @brief 接收回调函数指针
- * @param buffer 接收buffer
- * @param size 字节大小
- * 
- * @return 1:失败 0：成功
- * 
- */
-typedef int (*MicroUDS_ReceiveFunc_t)(uint8_t *buffer,size_t size);
+
 
 /**
  * @brief 通用功能函数
+ * 
  * @param param 通用参数Userdata
  *
  */
-typedef void (*MicroUDS_GeneralFunc_t)(void *param);
+typedef MicroUDS_NRC_t (*MicroUDS_GeneralFunc_t)(void *param);
 
 typedef struct 
 {
-    size_t MemorySize;
+    size_t MemorySize; // 哈希表总存储大小
     size_t RecordSize; // 记录大小
+    uint32_t Timeout; // 超时时间
     MicroUDS_TransmitFunc_t Transmit; // 发送函数
-    MicroUDS_ReceiveFunc_t Reveive; // 接收函数
 
 }MicroUDS_Conf_t;
 
@@ -243,7 +247,16 @@ typedef struct
 {
     uint8_t *data;
     size_t count;
+    size_t size;
 }MicroUDS_Record_t;
+
+typedef struct {
+    uint8_t buf[4096];      // 多帧数据缓冲区
+    uint16_t total_len;    // FF 中传来的总长度
+    uint16_t recv_len;     // 已接收长度
+    uint8_t next_sn;       // 下一个 CF 序号
+    bool receiving;        // 是否正在接收多帧
+} MicroUDS_MultiFrame_t;
 
 typedef struct 
 {
@@ -253,17 +266,22 @@ typedef struct
     Isotp_ConsecutiveFrame_t CF; // 连续帧
 }MicroUDS_Isotp_t;
 
+
+
 typedef struct
 {
     volatile uint32_t Tick; // 时基
-    Microuds_Service_t Serive; // 服务
+    uint32_t Timeout; // 超时时间
+    uint32_t last_time;
     MicroHash_Handle_t hashTable; // 哈希表
     volatile uint8_t sid; // 当前sid
     volatile uint8_t ssid; // 当前会话
     MicroUDS_TransmitFunc_t Transmit;
-    MicroUDS_ReceiveFunc_t Receive;
     MicroUDS_Record_t Record; // 记录
     MicroUDS_Isotp_t Recbuf; // 接收帧缓冲区
+    MicroUDS_MultiFrame_t MultiFrame; // 多帧
+    MicroUDS_Active_t active; // 活动
+
 } MicroUDS_Obj;
 
 typedef MicroUDS_Obj *MicroUDS_Handle_t;

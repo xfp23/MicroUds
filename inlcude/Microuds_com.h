@@ -24,6 +24,16 @@ extern "C"
             return MICROUDS_ERR_PARAM; \
     } while (0)
 
+#define MICROUDS_SAFE_CALL_TRANSMIT(buf, len)             \
+    do                                                    \
+    {                                                     \
+        if (MicroUDS_Handle->Transmit == NULL)            \
+            return MICROUDS_ERR_TRANS;                    \
+        if (MicroUDS_Handle->Transmit((buf), (len)) != 0) \
+            return MICROUDS_ERR_TRANS;                    \
+    } while (0)
+
+#define UDS_RESPONSE_OFFSET 0x40
 #ifdef __cplusplus
 }
 #endif

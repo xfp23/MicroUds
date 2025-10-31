@@ -1,8 +1,7 @@
 #include "Isotp.h"
 
 static Isotp_Obj Isotp = {0};
-
-const Isotp_Handle_t Isotp_Handle = &Isotp;
+Isotp_Handle_t const Isotp_Handle = &Isotp;
 
 Isotp_Sta_t Isotp_PackSingleFrame(uint8_t *Dst, const uint8_t *Src, size_t size)
 {
@@ -80,20 +79,23 @@ Isotp_Sta_t Isotp_UnpackFirstFrame(Isotp_FirstFrame_t *Dst, const uint8_t *Src)
     return ISOTP_OK;
 }
 
-Isotp_Sta_t Isotp_PackFlowControlFrame(uint8_t *Dst, uint8_t bs, uint8_t STime, Isotp_FlowStatus_t fs)
+Isotp_Sta_t Isotp_PackFlowControlFrame(uint8_t *Dst, uint8_t bs, uint8_t STmin, Isotp_FlowStatus_t fs)
 {
     if (Dst == NULL)
         return ISOTP_ERR_PARAM;
 
     memset(Isotp_Handle->FC.data, 0, 8);
-    Isotp_Handle->FC.byte.PCIType = FRAME_FLOWCONTROL;
-    Isotp_Handle->FC.byte.BS = bs;
-    Isotp_Handle->FC.byte.FS = fs;
-    Isotp_Handle->FC.byte.STmin = STime;
+
+    Isotp_Handle->FC.data[0] = (FRAME_FLOWCONTROL << 4) | (fs & 0x0F);
+
+    Isotp_Handle->FC.data[1] = bs;      // Block Size
+    Isotp_Handle->FC.data[2] = STmin;   // Separation Time
+    
     memcpy(Dst, Isotp_Handle->FC.data, 8);
 
     return ISOTP_OK;
 }
+
 
 Isotp_Sta_t Isotp_UnpackFlowControlFrame(Isotp_FlowControlFrame_t *Dst, uint8_t *Src)
 {
