@@ -66,28 +66,27 @@ MicroUDS_Sta_t MicroUDS_NegativeResponse(MicroUDS_NRC_t code)
     return MICROUDS_OK;
 }
 
-MicroUDS_Sta_t MicroUDS_Init(MicroUDS_Conf_t *conf)
+MicroUDS_Sta_t MicroUDS_Init(void)
 {
-    MICROUDS_CHECKPTR(conf);
 
-    if (conf->MemorySize == 0)
+    if (MICROUDS_HASH_SIZE == 0)
         return MICROUDS_ERR_PARAM;
 
     memset(&MicroUDS, 0, sizeof(MicroUDS));
 
     MicroHash_Conf_t hashConf = {
-        .buckSize = conf->MemorySize,
+        .buckSize = MICROUDS_HASH_SIZE,
     };
 
     /* 注册回调 */
-    MicroUDS_Handle->Transmit = conf->Transmit;
+    MicroUDS_Handle->Transmit = MICROUDS_TRANSMIT_CB;
 
     /* 分配记录表与初始化计数 */
-    MicroUDS_Handle->Record.data = (uint8_t *)calloc(conf->RecordSize, sizeof(uint8_t));
+    MicroUDS_Handle->Record.data = (uint8_t *)calloc(MICROUDS_SERVICE_RECORDS, sizeof(uint8_t));
     if (MicroUDS_Handle->Record.data == NULL)
         return MICROUDS_ERR_MEMORY;
     MicroUDS_Handle->Record.count = 0;
-    MicroUDS_Handle->Record.size  = conf->RecordSize;   /* 修正：size 字段赋值 */
+    MicroUDS_Handle->Record.size = MICROUDS_SERVICE_RECORDS;
 
     /* 初始化哈希表 */
     MicroHash_Sta_t HashRet = MicroHash_Init(&MicroUDS_Handle->hashTable, &hashConf);
@@ -115,11 +114,10 @@ MicroUDS_Sta_t MicroUDS_Init(MicroUDS_Conf_t *conf)
     MicroUDS_Handle->ssid = UDS_SESSION_DEFAULT;
     MicroUDS_Handle->last_time = 0;
     MicroUDS_Handle->Tick = 0;
-    MicroUDS_Handle->Timeout = conf->Timeout ? conf->Timeout : 5000; /* 默认5s */
+    MicroUDS_Handle->Timeout = MICROUDS_SERVICE_TIMEOUT_MS;
 
     return MICROUDS_OK;
 }
-
 
 void MicroUDS_Delete(void)
 {
@@ -152,7 +150,6 @@ void MicroUDS_Delete(void)
 
     memset(&MicroUDS, 0, sizeof(MicroUDS));
 }
-
 
 MicroUDS_Sta_t MicroUDS_RegisterService(MicroUDS_ServiceTable_t *table, size_t table_len)
 {
@@ -246,6 +243,17 @@ void MicroUDS_TimerHandler(void)
         return;
     }
 
+    if (MicroUDS_Handle->N_Cs.Active)
+    {
+        MicroUDS_Handle->N_Cs.tick = MicroUDS_Handle->Tick; // N_CS定时器
+        if (MicroUDS_Handle->N_Cs.tick - MicroUDS_Handle->N_Cs.lash_tick >= MICROUDS_SERVICE_TIMEOUT_MS)
+        {
+            MicroUDS_Handle->N_Cs.lash_tick = MicroUDS_Handle->N_Cs.tick;
+            // 多帧超时
+            memset(&MicroUDS_Handle->MultiFrame, 0, sizeof(MicroUDS_MultiFrame_t));
+            MicroUDS_Handle->N_Cs.Active = false;
+        }
+    }
     if (MicroUDS_Handle->active == UDS_ACTIVE_NO)
     {
         return; // 没有请求
@@ -255,6 +263,7 @@ void MicroUDS_TimerHandler(void)
     Microuds_Service_t *svc = (Microuds_Service_t *)MicroHash_Find(MicroUDS_Handle->hashTable, (MicroHash_key_t)MicroUDS_Handle->sid); // 找服务
     if (!svc)
     {
+
         MicroUDS_NegativeResponse(UDS_NRC_SERVICE_NOT_SUPPORTED);
         MicroUDS_ClearRecv();
         return;
@@ -262,8 +271,10 @@ void MicroUDS_TimerHandler(void)
 
     if (svc->func)
     {
+        UDS_ECUSETBUSY(); // ECU置忙
         MicroUDS_NRC_t ret = svc->func(svc->param);
         MicroUDS_Response(ret);
+        UDS_ECUCLEAR(); // ECU清除忙等待
     }
 
     bool session_found = false;
@@ -274,8 +285,10 @@ void MicroUDS_TimerHandler(void)
             session_found = true;
             if (ses->func)
             {
+                UDS_ECUSETBUSY();
                 MicroUDS_NRC_t ret = ses->func(ses->param);
                 MicroUDS_Response(ret);
+                UDS_ECUCLEAR();
             }
 
             break;
@@ -292,7 +305,6 @@ void MicroUDS_TimerHandler(void)
 
 static void MicroUDS_ClearRecv(void)
 {
-    /* 清空 Recbuf 与 MultiFrame 状态，避免残留 */
     memset(&MicroUDS_Handle->Recbuf, 0, sizeof(MicroUDS_Isotp_t));
 
     memset(&MicroUDS_Handle->MultiFrame, 0, sizeof(MicroUDS_MultiFrame_t));
@@ -308,16 +320,21 @@ void MicroUDS_ReceiveCallback(uint8_t *data)
     switch (FrameType)
     {
     case FRAME_SINGLE:
+
+        if (Isotp_UnpackSingleFrame(MicroUDS_Handle->Recbuf.SF.data, data) != ISOTP_OK)
+            return;
+
+        UDS_CHECK_ECU_BUSY(); // 检查ECU是否忙
         MicroUDS_ResetTimer();
-        Isotp_UnpackSingleFrame(MicroUDS_Handle->Recbuf.SF.data, data);
         MicroUDS_Handle->sid = MicroUDS_Handle->Recbuf.SF.byte.Payload[0];
         MicroUDS_Handle->ssid = MicroUDS_Handle->Recbuf.SF.byte.Payload[1];
         MicroUDS_Handle->active = UDS_ACTIVE_SIGNAL;
         break;
 
-    case FRAME_FIRST:
+    case FRAME_FIRST: // 首帧
     {
-        MicroUDS_ResetTimer();
+        if (Isotp_UnpackFirstFrame(MicroUDS_Handle->Recbuf.FF.data, data) != ISOTP_OK)
+            return;
 
         if (MicroUDS_Handle->MultiFrame.receiving)
         {
@@ -325,7 +342,8 @@ void MicroUDS_ReceiveCallback(uint8_t *data)
             memset(&MicroUDS_Handle->MultiFrame, 0, sizeof(MicroUDS_MultiFrame_t));
         }
 
-        Isotp_UnpackFirstFrame(MicroUDS_Handle->Recbuf.FF.data, data);
+        UDS_CHECK_ECU_BUSY(); // 检查ECU是否忙
+        MicroUDS_ResetTimer();
 
         MicroUDS_Handle->MultiFrame.total_len =
             ((MicroUDS_Handle->Recbuf.FF.byte.FF_DL_H & 0x0F) << 8) |
@@ -353,24 +371,29 @@ void MicroUDS_ReceiveCallback(uint8_t *data)
 
         if (MicroUDS_Handle->MultiFrame.recv_len >= 1)
             MicroUDS_Handle->sid = MicroUDS_Handle->MultiFrame.buf[0];
-        if (MicroUDS_Handle->MultiFrame.recv_len >= 2)
-            MicroUDS_Handle->ssid = MicroUDS_Handle->MultiFrame.buf[1];
+        // if (MicroUDS_Handle->MultiFrame.recv_len >= 2)
+        // MicroUDS_Handle->ssid = MicroUDS_Handle->MultiFrame.buf[1];
 
-        uint8_t fc[8] = {0};
-        Isotp_PackFlowControlFrame(fc, 0, 0, ISOTP_FS_CTS);
+        Isotp_PackFlowControlFrame(MicroUDS_Handle->Recbuf.FC.data, 0, 0, ISOTP_FS_CTS);
         if (MicroUDS_Handle->Transmit)
-            MicroUDS_Handle->Transmit(fc, 8);
+            MicroUDS_Handle->Transmit(MicroUDS_Handle->Recbuf.FC.data, 8);
 
-    } break;
+        MicroUDS_Handle->N_Cs.Active = true;
+    }
+    break;
 
     case FRAME_CONSECUTIVE:
     {
         if (!MicroUDS_Handle->MultiFrame.receiving)
             break;
 
-        MicroUDS_ResetTimer();
-        Isotp_UnpackConsecutiveFrame(MicroUDS_Handle->Recbuf.CF.data, data);
+        if (Isotp_UnPackConsecutiveFrame(MicroUDS_Handle->Recbuf.CF.data, data) != ISOTP_OK)
+        {
+            memset(&MicroUDS_Handle->MultiFrame, 0, sizeof(MicroUDS_MultiFrame_t));
+            return;
+        }
 
+        MicroUDS_ResetTimer();
         uint8_t sn = MicroUDS_Handle->Recbuf.CF.byte.SN;
         if (sn != MicroUDS_Handle->MultiFrame.next_sn)
         {
@@ -393,11 +416,14 @@ void MicroUDS_ReceiveCallback(uint8_t *data)
         {
             MicroUDS_Handle->MultiFrame.receiving = false;
             MicroUDS_Handle->active = UDS_ACTIVE_MULTI;
+
+            memset(&MicroUDS_Handle->N_Cs, 0, sizeof(MicroUDS_N_Cs_t));
         }
-    } break;
+    }
+    break;
 
     case FRAME_FLOWCONTROL:
-
+        /* ECU 不处理流控帧*/
         break;
 
     default:
@@ -420,18 +446,23 @@ static inline void MicroUDS_Response(MicroUDS_NRC_t code)
     }
 }
 
-MicroUDS_Sta_t MicroUDS_Multiframedata(uint8_t **out_buffer, size_t *out_size)
+MicroUDS_Sta_t MicroUDS_ReadMultiframeInfo(MicroUDS_MultiInfo_t *info)
 {
-    if (out_buffer == NULL || out_size == NULL)
-        return MICROUDS_ERR_PARAM;
+    MICROUDS_CHECKPTR(info);
 
-    if (!MicroUDS_Handle->MultiFrame.buf)
+    if (MicroUDS_Handle->MultiFrame.recv_len <= 1)
         return MICROUDS_ERR;
 
-    *out_buffer = &MicroUDS_Handle->MultiFrame.buf;
-    *out_size = (size_t)(MicroUDS_Handle->MultiFrame.total_len > 2 ? MicroUDS_Handle->MultiFrame.total_len : 0);
+    info->sid = MicroUDS_Handle->MultiFrame.buf[0];
+    info->data = &MicroUDS_Handle->MultiFrame.buf[1];
+    info->data_len = MicroUDS_Handle->MultiFrame.recv_len - 1;
 
     return MICROUDS_OK;
+}
+
+uint32_t MicroUDS_GetTickCount()
+{
+    return MicroUDS_Handle->Tick;
 }
 
 /* EOF */

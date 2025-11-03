@@ -27,12 +27,18 @@ typedef enum
 {
     MICROUDS_OK,
     MICROUDS_ERR,
-    MICROUDS_TIMEOUT,
+    MICROUDS_ERR_TIMEOUT,
     MICROUDS_ERR_MEMORY,
     MICROUDS_ERR_HASH,
     MICROUDS_ERR_PARAM,
     MICROUDS_ERR_TRANS,
 } MicroUDS_Sta_t;
+
+typedef enum
+{
+    ECU_FREE,
+    ECU_BUSY,
+} MicroUDS_EcuSta_t;
 
 //====================================================
 // 0x10 - Diagnostic Session Control (诊断会话控制)
@@ -115,8 +121,8 @@ typedef enum
  */
 typedef enum
 {
-    UDS_NRC_SUCCESS = 0x00,                    // 成功，正响应
-    UDS_NRC_NO = -1,                           // 不做任何响应
+    UDS_NRC_NO = -1,                          // 不做任何响应
+    UDS_NRC_SUCCESS = 0x00,                   // 成功，正响应
     UDS_NRC_GENERAL_REJECT = 0x10,            // 通用拒绝（General Reject）
     UDS_NRC_SERVICE_NOT_SUPPORTED = 0x11,     // 服务不支持（Service Not Supported）
     UDS_NRC_SUBFUNCTION_NOT_SUPPORTED = 0x12, // 子功能不支持（SubFunction Not Supported）
@@ -172,15 +178,14 @@ typedef enum
     UDS_REQUEST_TRANSFER_EXIT = 0x37,        // 结束传输
     UDS_TESTER_PRESENT = 0x3E,               // 测试仪在线（心跳）
     UDS_LINK_CONTROL = 0x87,                 // 链路控制
-} MicroUDS_Sid_t;                        // 服务枚举
-
+} MicroUDS_Sid_t;                            // 服务枚举
 
 typedef enum
 {
-    UDS_ACTIVE_NO,  // 不激活
+    UDS_ACTIVE_NO,     // 不激活
     UDS_ACTIVE_SIGNAL, // 单帧激活
-    UDS_ACTIVE_MULTI, // 多帧激活
-}MicroUDS_Active_t;
+    UDS_ACTIVE_MULTI,  // 多帧激活
+} MicroUDS_Active_t;
 
 //====================================================
 // 函数
@@ -194,38 +199,36 @@ typedef enum
  */
 typedef int (*MicroUDS_TransmitFunc_t)(uint8_t *data, size_t size);
 
-
-
 /**
  * @brief 通用功能函数
- * 
+ *
  * @param param 通用参数Userdata
  *
  */
 typedef MicroUDS_NRC_t (*MicroUDS_GeneralFunc_t)(void *param);
 
-typedef struct 
-{
-    size_t MemorySize; // 哈希表总存储大小
-    size_t RecordSize; // 记录大小
-    uint32_t Timeout; // 超时时间
-    MicroUDS_TransmitFunc_t Transmit; // 发送函数
+// typedef struct (废弃配置结构体)
+// {
+//     size_t MemorySize; // 哈希表总存储大小
+//     size_t RecordSize; // 记录大小
+//     uint32_t Timeout; // 超时时间
+//     MicroUDS_TransmitFunc_t Transmit; // 发送函数
 
-}MicroUDS_Conf_t;
+// }MicroUDS_Conf_t;
 
-typedef struct 
+typedef struct
 {
     MicroUDS_Sid_t sid; // 通用id
     MicroUDS_GeneralFunc_t func;
     void *param;
-}MicroUDS_ServiceTable_t; // 注册服务表,用户声明此类型数组来注册sid
+} MicroUDS_ServiceTable_t; // 注册服务表,用户声明此类型数组来注册sid
 
 typedef struct
 {
     uint8_t ssid;
     MicroUDS_GeneralFunc_t func;
     void *param;
-}MicroUDS_SessionTable_t; // 注册会话表，用户声明此类型数组来注册ssid
+} MicroUDS_SessionTable_t; // 注册会话表，用户声明此类型数组来注册ssid
 
 typedef struct MicroUDS_Session_t
 {
@@ -233,55 +236,70 @@ typedef struct MicroUDS_Session_t
     void *param;
     MicroUDS_GeneralFunc_t func;
     MicroUDS_Session_t *next; // 下一个会话 多个会话
-}MicroUDS_Session_t; 
+} MicroUDS_Session_t;
 
-typedef struct 
+typedef struct
 {
     uint8_t sid;
     MicroUDS_Session_t *Session; // 会话
     void *param;
     MicroUDS_GeneralFunc_t func;
-}Microuds_Service_t; // 服务
+} Microuds_Service_t; // 服务
 
-typedef struct 
+typedef struct
 {
     uint8_t *data;
     size_t count;
     size_t size;
-}MicroUDS_Record_t;
+} MicroUDS_Record_t;
 
-typedef struct {
-    uint8_t buf[4096];      // 多帧数据缓冲区
-    uint16_t total_len;    // FF 中传来的总长度
-    uint16_t recv_len;     // 已接收长度
-    uint8_t next_sn;       // 下一个 CF 序号
-    bool receiving;        // 是否正在接收多帧
+typedef struct
+{
+    uint8_t buf[4096];  // 多帧数据缓冲区
+    uint16_t total_len; // FF 中传来的总长度
+    uint16_t recv_len;  // 已接收长度
+    uint8_t next_sn;    // 下一个 CF 序号
+    bool receiving;     // 是否正在接收多帧
+
 } MicroUDS_MultiFrame_t;
 
-typedef struct 
+typedef struct
+{
+    uint8_t sid;
+    uint16_t data_len;
+    uint8_t *data;
+} MicroUDS_MultiInfo_t;
+
+typedef struct
 {
     Isotp_SingleFrame_t SF;      // 单帧
     Isotp_FirstFrame_t FF;       // 首帧
     Isotp_FlowControlFrame_t FC; // 流控帧
     Isotp_ConsecutiveFrame_t CF; // 连续帧
-}MicroUDS_Isotp_t;
+} MicroUDS_Isotp_t;
 
-
+typedef struct
+{
+    uint32_t tick;      // 滴答
+    uint32_t lash_tick; // 上一个滴答
+    bool Active;        // 是否激活定时器
+} MicroUDS_N_Cs_t;      // N_Cs定时器
 
 typedef struct
 {
     volatile uint32_t Tick; // 时基
-    uint32_t Timeout; // 超时时间
+    uint32_t Timeout;       // 超时时间
     uint32_t last_time;
     MicroHash_Handle_t hashTable; // 哈希表
-    volatile uint8_t sid; // 当前sid
-    volatile uint8_t ssid; // 当前会话
+    volatile uint8_t sid;         // 当前sid
+    volatile uint8_t ssid;        // 当前会话
     MicroUDS_TransmitFunc_t Transmit;
-    MicroUDS_Record_t Record; // 记录
-    MicroUDS_Isotp_t Recbuf; // 接收帧缓冲区
+    MicroUDS_Record_t Record;         // 记录
+    MicroUDS_Isotp_t Recbuf;          // 接收帧缓冲区
     MicroUDS_MultiFrame_t MultiFrame; // 多帧
-    MicroUDS_Active_t active; // 活动
-
+    MicroUDS_Active_t active;         // 活动
+    MicroUDS_EcuSta_t Ecu_sta;        // ecu状态
+    volatile MicroUDS_N_Cs_t N_Cs;    // N_Cs监控
 } MicroUDS_Obj;
 
 typedef MicroUDS_Obj *MicroUDS_Handle_t;

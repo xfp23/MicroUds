@@ -4,7 +4,7 @@
 /**
  * @file MicroUds_com.h
  * @author https://github.com/xfp23
- * @brief
+ * @brief 工具宏
  * @version 0.1
  * @date 2025-10-21
  *
@@ -34,6 +34,21 @@ extern "C"
     } while (0)
 
 #define UDS_RESPONSE_OFFSET 0x40
+
+#define UDS_CHECK_ECU_BUSY()                                        \
+    do                                                              \
+    {                                                               \
+        if (MicroUDS_Handle->Ecu_sta == ECU_BUSY)                   \
+        {                                                           \
+            MicroUDS_NegativeResponse(UDS_NRC_BUSY_REPEAT_REQUEST); \
+            return;                                                 \
+        }                                                           \
+    } while (0)
+
+#define UDS_ECUSETBUSY() MicroUDS_Handle->Ecu_sta = ECU_BUSY
+
+#define UDS_ECUCLEAR() MicroUDS_Handle->Ecu_sta = ECU_FREE
+
 #ifdef __cplusplus
 }
 #endif
