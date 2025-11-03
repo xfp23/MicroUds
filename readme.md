@@ -1,6 +1,8 @@
 
 ---
 
+[中文](./readme.zh.md)
+
 # 🚀 Quick Start Guide — MicroUDS
 
 ## 1. Configuration
