@@ -13,6 +13,7 @@
 
 #include "stdint.h"
 #include "MicroHash_conf.h"
+#include "stddef.h"
 
 #ifdef __cplusplus
 extern  "C"
@@ -44,7 +45,7 @@ typedef struct MicroHash_Node_t
 {
     MicroHash_key_t key; // 哈希值
     void *data;
-    MicroHash_Node_t *next; // key冲突链表
+    struct MicroHash_Node_t *next; // key冲突链表
 }MicroHash_Node_t;
 
 typedef struct

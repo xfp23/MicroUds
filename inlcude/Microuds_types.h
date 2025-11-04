@@ -235,7 +235,7 @@ typedef struct MicroUDS_Session_t
     uint8_t ssid;
     void *param;
     MicroUDS_GeneralFunc_t func;
-    MicroUDS_Session_t *next; // 下一个会话 多个会话
+    struct MicroUDS_Session_t *next; // 下一个会话 多个会话
 } MicroUDS_Session_t;
 
 typedef struct
