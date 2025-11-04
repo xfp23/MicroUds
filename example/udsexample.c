@@ -30,13 +30,22 @@ static int MyCAN_Transmit(uint8_t *data, size_t size)
 /**
  * @brief Example handler for service 0x10 (Diagnostic Session Control)
  */
-static MicroUDS_Sta_t Example_Service_0x10(uint8_t *req, size_t len, void *param)
+static MicroUDS_NRC_t Example_Service_0x10(void *param)
 {
     (void)param;
-    printf("[Service 0x10] Request len=%zu\n", len);
+    printf("[Service 0x10] Request\n");
 
     // Example: just return a positive response
-    return MicroUDS_PositiveResponse();
+    return UDS_NRC_SUCCESS; // return postitive response
+}
+
+static MicroUDS_NRC_t Example_Service_0x01(void *param)
+{
+    (void)param;
+    printf("[Session 0x01] Request\n");
+
+    // Example: just return a positive response
+    return UDS_NRC_SUCCESS; // return postitive response
 }
 
 /* -------------------------------------------------------------------------- */
@@ -45,6 +54,10 @@ static MicroUDS_Sta_t Example_Service_0x10(uint8_t *req, size_t len, void *param
 
 static MicroUDS_ServiceTable_t serviceTable[] = {
     {UDS_DIAGNOSTIC_SESSION_CONTROL, Example_Service_0x10, NULL},
+};
+
+static MicroUDS_SessionTable_t sessionTable[] = {
+    {UDS_SESSION_DEFAULT, Example_Service_0x01, NULL},
 };
 
 /* -------------------------------------------------------------------------- */
@@ -67,6 +80,7 @@ int main(void)
     /* 3. Register UDS Services */
     MicroUDS_RegisterService(serviceTable, sizeof(serviceTable) / sizeof(serviceTable[0]));
 
+    MicroUDS_RegisterSession(UDS_DIAGNOSTIC_SESSION_CONTROL, sessionTable, sizeof(sessionTable) / sizeof(sessionTable[0]));
     /* 4. Simulate receiving a UDS frame */
     uint8_t testFrame[8] = {0x02, 0x10, 0x01, 0x00, 0, 0, 0, 0}; // SID = 0x10
     MicroUDS_ReceiveCallback(testFrame);
