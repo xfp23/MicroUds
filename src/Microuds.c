@@ -371,11 +371,9 @@ void MicroUDS_ReceiveCallback(uint8_t *data)
         MicroUDS_Handle->MultiFrame.receiving = true;
 
         if (MicroUDS_Handle->MultiFrame.recv_len >= 1)
-            MicroUDS_Handle->sid = MicroUDS_Handle->MultiFrame.buf[0];
-        // if (MicroUDS_Handle->MultiFrame.recv_len >= 2)
-        // MicroUDS_Handle->ssid = MicroUDS_Handle->MultiFrame.buf[1];
+            MicroUDS_Handle->sid = MicroUDS_Handle->MultiFrame.buf[0]; // 在首帧取ID
 
-        Isotp_PackFlowControlFrame(MicroUDS_Handle->Recbuf.FC.data, 0, 0, ISOTP_FS_CTS);
+        Isotp_PackFlowControlFrame(MicroUDS_Handle->Recbuf.FC.data, MICROUDS_FC_BS, MICROUDS_FC_STMIN, ISOTP_FS_CTS);
         if (MicroUDS_Handle->Transmit)
             MicroUDS_Handle->Transmit(MicroUDS_Handle->Recbuf.FC.data, 8);
 

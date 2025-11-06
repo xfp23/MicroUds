@@ -128,6 +128,35 @@ extern "C" {
 extern int MICROUDS_TRANSMIT_CB(uint8_t *data, size_t len);
 #endif
 
+/**
+ * @brief ISO-TP Flow Control (FC) frame configuration
+ * 
+ * These macros define how the ECU responds when sending a Flow Control (FC) frame
+ * to the tester during multi-frame transfer.
+ * 
+ * Users can override them in project configuration before including MicroUDS headers.
+ */
+
+/**
+ * @brief Block Size (BS)
+ * Number of consecutive frames the sender is allowed to send before
+ * waiting for the next Flow Control frame.
+ * 
+ * @note 0 means “no limit” (continuous transmission).
+ */
+#ifndef MICROUDS_FC_BS
+#define MICROUDS_FC_BS 0x00  /* Default: unlimited consecutive frames */
+#endif
+
+/**
+ * @brief Separation Time (STmin)
+ * Minimum time between consecutive frames (in milliseconds).
+ * 
+ * @note 0x00–0x7F = 0–127 ms, 0xF1–0xF9 = 100–900 μs. 
+ */
+#ifndef MICROUDS_FC_STMIN
+#define MICROUDS_FC_STMIN 0x00  /* Default: no delay between frames */
+#endif
 
 #ifdef __cplusplus
 }
