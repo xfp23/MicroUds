@@ -12,8 +12,8 @@
 #define MICROHASH_TYPES_H
 
 #include "stdint.h"
-#include "MicroHash_conf.h"
 #include "stddef.h"
+#include "MicroHash_conf.h"
 
 #ifdef __cplusplus
 extern  "C"
@@ -43,10 +43,11 @@ typedef uint64_t MicroHash_key_t;
 
 typedef struct MicroHash_Node_t
 {
-    MicroHash_key_t key; // 哈希值
+    MicroHash_key_t key;
     void *data;
-    struct MicroHash_Node_t *next; // key冲突链表
-}MicroHash_Node_t;
+    struct MicroHash_Node_t *next;
+} MicroHash_Node_t;
+
 
 typedef struct
 {

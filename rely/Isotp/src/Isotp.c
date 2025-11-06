@@ -154,17 +154,3 @@ Isotp_Sta_t Isotp_UnPackConsecutiveFrame(Isotp_ConsecutiveFrame_t *Dst, uint8_t 
 
     return ISOTP_OK;
 }
-
-// Isotp_Sta_t Isotp_UnpackFrame(uint8_t *Dst,uint8_t *Src,size_t size)
-// {
-//     if (Dst == NULL || Src == NULL)
-//         return ISOTP_ERR_PARAM;
-
-//     Isotp_FrameType_t FrameType = (Src[0] & 0xF0) >> 4;
-//     switch(FrameType)
-//     {
-//     case FRAME_SINGLE:
-//         Isotp_UnpackSingleFrame(Dst,Src);
-//     break;
-//     }
-// }

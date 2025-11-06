@@ -12,6 +12,9 @@
 #ifndef MICROUDS_CONF_H
 #define MICROUDS_CONF_H
 
+#include "stdint.h"
+#include "stddef.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,7 +32,7 @@ extern "C" {
  * @brief Hash table size — corresponds to the number of supported UDS services.
  * Each registered service occupies one hash bucket.
  */
-#define MICROUDS_HASH_SIZE            64
+#define MICROUDS_HASH_SIZE            32
 
 /**
  * @brief System tick frequency in Hz.
@@ -77,7 +80,7 @@ extern "C" {
  *       #define MICROUDS_TRANSMIT_CB   MyCAN_Transmit
  *       @endcode
  */
-#define MICROUDS_TRANSMIT_CB          NULL
+#define MICROUDS_TRANSMIT_CB          0
 
 
 /* -------------------------------------------------------------------------- */
@@ -94,15 +97,17 @@ extern "C" {
  * ⚠️ If too small, new service registrations may overwrite existing ones
  * or cause memory corruption.
  */
-#define MICROUDS_SERVICE_RECORDS      64
+#define MICROUDS_SERVICE_RECORDS      2
 
 /* -------------------------------------------------------------------------- */
 /*                              Sanity Checks                                 */
 /* -------------------------------------------------------------------------- */
 
-#ifndef MICROUDS_TRANSMIT_CB
+#if !MICROUDS_TRANSMIT_CB 
 #warning "MICROUDS_TRANSMIT_CB not defined. Defaulting to NULL (no transmission)."
 #define MICROUDS_TRANSMIT_CB NULL
+#else
+extern int MICROUDS_TRANSMIT_CB(uint8_t *data,size_t len);
 #endif
 
 #ifdef __cplusplus
