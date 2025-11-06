@@ -12,8 +12,8 @@
 #ifndef MICROUDS_CONF_H
 #define MICROUDS_CONF_H
 
-#include "stdint.h"
-#include "stddef.h"
+#include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,15 +30,21 @@ extern "C" {
 
 /**
  * @brief Hash table size — corresponds to the number of supported UDS services.
+ *
  * Each registered service occupies one hash bucket.
+ * 
+ * ⚙️ Recommended: set equal or slightly higher than the number of services
+ * you plan to register.
  */
 #define MICROUDS_HASH_SIZE            32
 
 /**
  * @brief System tick frequency in Hz.
  * 
- * Defines the timing base used by all MicroUDS internal timers.
- * This should match the period of your scheduler or periodic timer callback.
+ * Defines the timing base used by all internal timers.
+ * This should match your periodic scheduler or timer callback rate.
+ * 
+ * Example: 1ms tick → 1000Hz.
  */
 #define MICROUDS_TICK_FREQ_HZ         1000
 
@@ -50,7 +56,9 @@ extern "C" {
 /**
  * @brief Inter-frame timeout for multi-frame transmission (N_Cs).
  * 
- * If exceeded, the ongoing transfer will be aborted.
+ * If this timeout expires during transmission or reception,
+ * the ongoing transfer will be aborted.
+ *
  * Unit: milliseconds.
  */
 #define MICROUDS_TIMEOUT_N_CS_MS      150
@@ -58,7 +66,9 @@ extern "C" {
 /**
  * @brief Maximum service execution timeout.
  * 
- * If this timeout is reached, the session will be reset to default.
+ * If the service execution exceeds this time,
+ * the active session will be reset to the default session.
+ *
  * Unit: milliseconds.
  */
 #define MICROUDS_SERVICE_TIMEOUT_MS   5000
@@ -69,46 +79,55 @@ extern "C" {
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief User-defined transmit callback. @ref MicroUDS_TransmitFunc_t
+ * @brief User-defined transmit callback (see @ref MicroUDS_TransmitFunc_t).
  *
- * @param data Pointer to the data buffer to send.
- * @param len  Number of bytes to send.
- * @return Status code defined by user (0 = OK, non-zero = error).
- *
- * @note Assign this macro to your transmit function, e.g.:
- *       @code
- *       #define MICROUDS_TRANSMIT_CB   MyCAN_Transmit
- *       @endcode
+ * The callback should send a CAN (or similar transport) frame.
+ * 
+ * Example:
+ * @code
+ * int MyCAN_Transmit(uint8_t *data, size_t len);
+ * #define MICROUDS_TRANSMIT_CB MyCAN_Transmit
+ * @endcode
  */
 #define MICROUDS_TRANSMIT_CB          NULL
 
 
 /* -------------------------------------------------------------------------- */
-/*                             Service Record Config                           */
+/*                             Service Record Config                          */
 /* -------------------------------------------------------------------------- */
 
 /**
  * @brief Number of UDS service records available.
  * 
- * This value determines how many service entries can be registered
- * within MicroUDS. It also serves the deletion logic in
- * @ref MicroUDS_Delete.
+ * This defines how many service entries can be registered in MicroUDS.
+ * It also controls memory allocation used by @ref MicroUDS_RegisterService.
  *
- * ⚠️ If too small, new service registrations may overwrite existing ones
- * or cause memory corruption.
+ * ⚠️ If this value is too small, service registration may overwrite existing
+ * entries or trigger memory corruption.
  */
 #define MICROUDS_SERVICE_RECORDS      2
+
 
 /* -------------------------------------------------------------------------- */
 /*                              Sanity Checks                                 */
 /* -------------------------------------------------------------------------- */
 
-#ifndef MICROUDS_TRANSMIT_CB 
-#warning "MICROUDS_TRANSMIT_CB not defined. Defaulting to NULL (no transmission)."
+#ifndef MICROUDS_TRANSMIT_CB
+#warning "MICROUDS_TRANSMIT_CB not defined — defaulting to NULL (no transmission)."
 #define MICROUDS_TRANSMIT_CB NULL
 #else
-extern int MICROUDS_TRANSMIT_CB(uint8_t *data,size_t len);
+/**
+ * @brief Extern declaration of user-defined transmit function.
+ * 
+ * This function must be provided by the application layer.
+ * 
+ * @param data Pointer to data buffer to transmit.
+ * @param len  Number of bytes to transmit.
+ * @return 0 on success, non-zero on failure.
+ */
+extern int MICROUDS_TRANSMIT_CB(uint8_t *data, size_t len);
 #endif
+
 
 #ifdef __cplusplus
 }
