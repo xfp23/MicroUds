@@ -207,14 +207,9 @@ typedef int (*MicroUDS_TransmitFunc_t)(uint8_t *data, size_t size);
  */
 typedef MicroUDS_NRC_t (*MicroUDS_GeneralFunc_t)(void *param);
 
-// typedef struct (废弃配置结构体)
-// {
-//     size_t MemorySize; // 哈希表总存储大小
-//     size_t RecordSize; // 记录大小
-//     uint32_t Timeout; // 超时时间
-//     MicroUDS_TransmitFunc_t Transmit; // 发送函数
-
-// }MicroUDS_Conf_t;
+//====================================================
+// 数据结构
+//====================================================
 
 typedef struct
 {
@@ -282,8 +277,13 @@ typedef struct
 {
     uint32_t tick;      // 滴答
     uint32_t lash_tick; // 上一个滴答
+    uint32_t Timeout; // 超时时间
     bool Active;        // 是否激活定时器
 } MicroUDS_N_Cs_t;      // N_Cs定时器
+
+//====================================================
+// 对象
+//====================================================
 
 typedef struct
 {
@@ -301,6 +301,10 @@ typedef struct
     MicroUDS_EcuSta_t Ecu_sta;        // ecu状态
     volatile MicroUDS_N_Cs_t N_Cs;    // N_Cs监控
 } MicroUDS_Obj;
+
+//====================================================
+// 句柄
+//====================================================
 
 typedef MicroUDS_Obj *MicroUDS_Handle_t;
 

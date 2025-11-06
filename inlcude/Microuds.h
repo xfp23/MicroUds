@@ -130,7 +130,7 @@ extern MicroUDS_Sta_t MicroUDS_NegativeResponse(MicroUDS_NRC_t code);
 extern void MicroUDS_Delete(void);
 
 // /**
-//  * @brief Retrieve pointer to reassembled multi-frame data. (Deprecated, replaced by MicroUDS_GetMultiframeInfo)
+//  * @brief Retrieve pointer to reassembled multi-frame data. (Deprecated, replaced by MicroUDS_ReadMultiframeInfo)
 //  *
 //  * After a segmented transfer (First Frame + Consecutive Frames) completes,
 //  * this function can be used to obtain the full payload.

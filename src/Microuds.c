@@ -33,7 +33,7 @@ MicroUDS_Sta_t MicroUDS_PositiveResponse(void)
     size_t len = 0;
 
     /* SID + 0x40 表示正响应 */
-    data[0] = (uint8_t)(MicroUDS_Handle->sid + UDS_RESPONSE_OFFSET);
+    data[0] = (uint8_t)(MicroUDS_Handle->sid + MICROUDS_RESPONSE_OFFSET);
     len = 1;
 
     if (MicroUDS_Handle->ssid != 0)
@@ -114,7 +114,8 @@ MicroUDS_Sta_t MicroUDS_Init(void)
     MicroUDS_Handle->ssid = UDS_SESSION_DEFAULT;
     MicroUDS_Handle->last_time = 0;
     MicroUDS_Handle->Tick = 0;
-    MicroUDS_Handle->Timeout = MICROUDS_SERVICE_TIMEOUT_MS;
+    MicroUDS_Handle->Timeout = MICROUDS_MS_TICK(MICROUDS_SERVICE_TIMEOUT_MS);
+    MicroUDS_Handle->N_Cs.Timeout = MICROUDS_MS_TICK(MICROUDS_TIMEOUT_N_CS_MS);
 
     return MICROUDS_OK;
 }
@@ -246,7 +247,7 @@ void MicroUDS_TimerHandler(void)
     if (MicroUDS_Handle->N_Cs.Active)
     {
         MicroUDS_Handle->N_Cs.tick = MicroUDS_Handle->Tick; // N_CS定时器
-        if (MicroUDS_Handle->N_Cs.tick - MicroUDS_Handle->N_Cs.lash_tick >= MICROUDS_SERVICE_TIMEOUT_MS)
+        if (MicroUDS_Handle->N_Cs.tick - MicroUDS_Handle->N_Cs.lash_tick >= MicroUDS_Handle->N_Cs.Timeout)
         {
             MicroUDS_Handle->N_Cs.lash_tick = MicroUDS_Handle->N_Cs.tick;
             // 多帧超时
@@ -271,10 +272,10 @@ void MicroUDS_TimerHandler(void)
 
     if (svc->func)
     {
-        UDS_ECUSETBUSY(); // ECU置忙
+        MICROUDS_ECUSETBUSY(); // ECU置忙
         MicroUDS_NRC_t ret = svc->func(svc->param);
         MicroUDS_Response(ret);
-        UDS_ECUCLEAR(); // ECU清除忙等待
+        MICROUDS_ECUCLEAR(); // ECU清除忙等待
     }
 
     bool session_found = false;
@@ -285,10 +286,10 @@ void MicroUDS_TimerHandler(void)
             session_found = true;
             if (ses->func)
             {
-                UDS_ECUSETBUSY();
+                MICROUDS_ECUSETBUSY();
                 MicroUDS_NRC_t ret = ses->func(ses->param);
                 MicroUDS_Response(ret);
-                UDS_ECUCLEAR();
+                MICROUDS_ECUCLEAR();
             }
 
             break;

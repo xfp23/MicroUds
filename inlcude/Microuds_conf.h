@@ -80,7 +80,7 @@ extern "C" {
  *       #define MICROUDS_TRANSMIT_CB   MyCAN_Transmit
  *       @endcode
  */
-#define MICROUDS_TRANSMIT_CB          0
+#define MICROUDS_TRANSMIT_CB          NULL
 
 
 /* -------------------------------------------------------------------------- */
@@ -103,7 +103,7 @@ extern "C" {
 /*                              Sanity Checks                                 */
 /* -------------------------------------------------------------------------- */
 
-#if !MICROUDS_TRANSMIT_CB 
+#ifndef MICROUDS_TRANSMIT_CB 
 #warning "MICROUDS_TRANSMIT_CB not defined. Defaulting to NULL (no transmission)."
 #define MICROUDS_TRANSMIT_CB NULL
 #else
