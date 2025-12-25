@@ -14,7 +14,7 @@
 #include "stdlib.h"
 #include "string.h"
 
-static MicroUDS_Obj MicroUDS = {0};
+static MicroUDS_Obj_t MicroUDS = {0};
 MicroUDS_Handle_t const MicroUDS_Handle = &MicroUDS;
 
 static void MicroUDS_ClearRecv(void);
@@ -74,10 +74,6 @@ MicroUDS_Sta_t MicroUDS_Init(void)
 
     memset(&MicroUDS, 0, sizeof(MicroUDS));
 
-    MicroHash_Conf_t hashConf = {
-        .buckSize = MICROUDS_HASH_SIZE,
-    };
-
     /* 注册回调 */
     MicroUDS_Handle->Transmit = MICROUDS_TRANSMIT_CB;
 
@@ -88,26 +84,7 @@ MicroUDS_Sta_t MicroUDS_Init(void)
     MicroUDS_Handle->Record.count = 0;
     MicroUDS_Handle->Record.size = MICROUDS_SERVICE_RECORDS;
 
-    /* 初始化哈希表 */
-    MicroHash_Sta_t HashRet = MicroHash_Init(&MicroUDS_Handle->hashTable, &hashConf);
-    if (HashRet != MICROHASH_OK)
-    {
-        free(MicroUDS_Handle->Record.data);
-        MicroUDS_Handle->Record.data = NULL;
-        MicroUDS_Handle->Record.size = 0;
-        MicroUDS_Handle->Record.count = 0;
-        switch (HashRet)
-        {
-        case MICROHASH_ERR:
-            return MICROUDS_ERR;
-        case MICROHASH_ERR_PARAM:
-            return MICROUDS_ERR_HASH;
-        case MICROHASH_ERR_MEMORY:
-            return MICROUDS_ERR_MEMORY;
-        default:
-            return MICROUDS_ERR;
-        }
-    }
+    MicroUDS_Handle->hashTable = MKTV_KEYSPACE_UDS_SERVICE_ID;
 
     /* 初始化会话为默认会话 */
     MicroUDS_Handle->sid = UDS_DIAGNOSTIC_SESSION_CONTROL;
@@ -127,7 +104,7 @@ void MicroUDS_Delete(void)
         for (size_t i = 0; i < MicroUDS_Handle->Record.count; i++)
         {
             MicroUDS_Sid_t sid = (MicroUDS_Sid_t)MicroUDS_Handle->Record.data[i];
-            Microuds_Service_t *svc = (Microuds_Service_t *)MicroHash_Find(&MicroUDS_Handle->hashTable, (MicroHash_key_t)sid);
+            Microuds_Service_t *svc = (Microuds_Service_t *)MicroKVTable_Find(MicroUDS_Handle->hashTable, (MicroKVTable_key_t)sid);
             if (!svc)
                 continue;
 
@@ -147,7 +124,7 @@ void MicroUDS_Delete(void)
         MicroUDS_Handle->Record.size = 0;
     }
 
-    MicroHash_Delete(&MicroUDS_Handle->hashTable);
+    MicroKVTable_Delete(MicroUDS_Handle->hashTable);
 
     memset(&MicroUDS, 0, sizeof(MicroUDS));
 }
@@ -169,7 +146,7 @@ MicroUDS_Sta_t MicroUDS_RegisterService(MicroUDS_ServiceTable_t *table, size_t t
         svc->sid = table[i].sid;
         svc->Session = NULL;
 
-        if (MicroHash_Insert(&MicroUDS_Handle->hashTable, (MicroHash_key_t)table[i].sid, (void *)svc) != MICROHASH_OK)
+        if (MicroKVTable_Insert(MicroUDS_Handle->hashTable, (MicroKVTable_key_t)table[i].sid, (void *)svc) != MicroKVTable_OK)
         {
             free(svc);
             return MICROUDS_ERR_HASH;
@@ -188,7 +165,7 @@ MicroUDS_Sta_t MicroUDS_RegisterSession(MicroUDS_Sid_t sid, MicroUDS_SessionTabl
     if (table_len == 0)
         return MICROUDS_ERR_PARAM;
 
-    Microuds_Service_t *svc = (Microuds_Service_t *)MicroHash_Find(&MicroUDS_Handle->hashTable, (MicroHash_key_t)sid);
+    Microuds_Service_t *svc = (Microuds_Service_t *)MicroKVTable_Find(MicroUDS_Handle->hashTable, (MicroKVTable_key_t)sid);
     if (!svc)
         return MICROUDS_ERR_PARAM;
 
@@ -261,7 +238,7 @@ void MicroUDS_TimerHandler(void)
     }
     MicroUDS_Handle->active = UDS_ACTIVE_NO;
 
-    Microuds_Service_t *svc = (Microuds_Service_t *)MicroHash_Find(&MicroUDS_Handle->hashTable, (MicroHash_key_t)MicroUDS_Handle->sid); // 找服务
+    Microuds_Service_t *svc = (Microuds_Service_t *)MicroKVTable_Find(MicroUDS_Handle->hashTable, (MicroKVTable_key_t)MicroUDS_Handle->sid); // 找服务
     if (!svc)
     {
 

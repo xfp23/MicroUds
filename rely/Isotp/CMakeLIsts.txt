@@ -14,10 +14,10 @@ file(GLOB_RECURSE SRC_FILES
 
 # 添加可执行文件（仅用于索引或 PC 测试）
 add_executable(${PROJECT_NAME} ${SRC_FILES}
-        src/MicroHash.c
-        include/MicroHash.h
-        include/MicroHash_types.h
-        include/MicroHash_conf.h)
+        src/MicroKVTable.c
+        include/MicroKVTable.h
+        include/MicroKVTable_types.h
+        include/MicroKVTable_conf.h)
 
 # 添加 include 路径
 include_directories(

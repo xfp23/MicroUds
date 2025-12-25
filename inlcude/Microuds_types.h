@@ -16,7 +16,7 @@
 #include "string.h"
 #include "stdlib.h"
 #include "Isotp.h"
-#include "MicroHash.h"
+#include "MicroKVTable.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -290,7 +290,8 @@ typedef struct
     volatile uint32_t Tick; // 时基
     uint32_t Timeout;       // 超时时间
     uint32_t last_time;
-    MicroHash_Handle_t hashTable; // 哈希表
+    // MicroKVTable_Handle_t hashTable; // 哈希表
+    MicroKVTable_KeySpace_t hashTable;
     volatile uint8_t sid;         // 当前sid
     volatile uint8_t ssid;        // 当前会话
     MicroUDS_TransmitFunc_t Transmit;
@@ -300,13 +301,13 @@ typedef struct
     MicroUDS_Active_t active;         // 活动
     MicroUDS_EcuSta_t Ecu_sta;        // ecu状态
     volatile MicroUDS_N_Cs_t N_Cs;    // N_Cs监控
-} MicroUDS_Obj;
+} MicroUDS_Obj_t;
 
 //====================================================
 // 句柄
 //====================================================
 
-typedef MicroUDS_Obj *MicroUDS_Handle_t;
+typedef MicroUDS_Obj_t *MicroUDS_Handle_t;
 
 #ifdef __cplusplus
 }
