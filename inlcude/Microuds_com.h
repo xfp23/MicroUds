@@ -99,6 +99,12 @@ extern "C" {
  */
 #define MICROUDS_COUNTOF(arr)   (sizeof(arr) / sizeof((arr)[0]))
 
+/**
+ * @brief microUDS weak 
+ * 
+ */
+#define MICROUDS_WEAK __attribute__((weak))
+
 
 #ifdef __cplusplus
 }

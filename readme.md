@@ -10,51 +10,25 @@
 In your `MicroUDS_conf.h`, adjust the following macros as needed:
 
 ```c
-#define MICROUDS_HASH_SIZE            64
 #define MICROUDS_TICK_FREQ_HZ         1000
 #define MICROUDS_TIMEOUT_N_CS_MS      150
 #define MICROUDS_SERVICE_TIMEOUT_MS   5000
-#define MICROUDS_TRANSMIT_CB          NULL
 #define MICROUDS_SERVICE_RECORDS      64
 ```
 
 ### Parameter Description
 
-1. **`MICROUDS_HASH_SIZE`**
-   Size of the internal hash table.
-   Each registered service occupies one bucket, so set this according to the number of services you intend to register.
-
-2. **`MICROUDS_TICK_FREQ_HZ`**
+1. **`MICROUDS_TICK_FREQ_HZ`**
    System tick frequency (in Hz).
    This must match the call rate of your periodic `MicroUDS_TickHandler()`.
    Recommended: `1000` (1 ms period).
 
-3. **`MICROUDS_TIMEOUT_N_CS_MS`**
+2. **`MICROUDS_TIMEOUT_N_CS_MS`**
    Timeout for inter-frame transmission (N_Cs).
    If exceeded, the multi-frame transfer is aborted.
    (Refer to ISO 14229 for details on N_Cs timing.)
 
-4. **`MICROUDS_TRANSMIT_CB`**
-   User-defined transmit function for sending data (e.g., via CAN).
-   Must conform to the following prototype:
-
-   ```c
-   /**
-    * @brief Transmit function pointer type.
-    * @param data Pointer to transmit buffer.
-    * @param size Number of bytes to transmit.
-    * @return 0 = success, non-zero = failure.
-    */
-   typedef int (*MicroUDS_TransmitFunc_t)(uint8_t *data, size_t size);
-   ```
-
-   Example:
-
-   ```c
-   #define MICROUDS_TRANSMIT_CB   MyCAN_Transmit
-   ```
-
-5. **`MICROUDS_SERVICE_RECORDS`**
+3. **`MICROUDS_SERVICE_RECORDS`**
    Number of service record slots.
    This should match (or slightly exceed) the total number of UDS services you plan to register.
    It is also used internally by `MicroUDS_Delete()`.
@@ -122,7 +96,18 @@ Registers an array of service entries.
 MicroUDS_Sta_t MicroUDS_RegisterSession(MicroUDS_Sid_t sid, MicroUDS_SessionTable_t *table, size_t table_len);
 ```
 
-Adds session entries for a specific service ID.
+### 7. Implement Sending Function
+
+`MicroUDS_Transmit()` is provided as a weak function.  
+Users **must override this function** to implement the actual data transmission mechanism (e.g. CAN, LIN, DoIP).
+
+```c
+MicroUDS_Sta_t MicroUDS_Transmit(uint8_t *data,size_t len)
+{
+    // your transmit
+    return MICROUDS_OK;
+}
+```
 
 ---
 

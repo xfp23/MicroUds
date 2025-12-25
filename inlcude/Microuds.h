@@ -18,6 +18,7 @@
  */
 
 #include "Microuds_types.h"
+#include "Microuds_com.h"
 #include "Isotp.h"
 
 #ifdef __cplusplus
@@ -150,6 +151,15 @@ extern void MicroUDS_Delete(void);
  * @return MicroUDS_Sta_t 
  */
 extern MicroUDS_Sta_t MicroUDS_ReadMultiframeInfo(MicroUDS_MultiInfo_t *info);
+
+/**
+ * @brief Microuds transmit cb
+ * 
+ * @param data data
+ * @param len data len
+ * @return MicroUDS_Sta_t 
+ */
+MICROUDS_WEAK MicroUDS_Sta_t MicroUDS_Transmit(uint8_t *data,size_t len);
 
 #ifdef __cplusplus
 }

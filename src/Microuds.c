@@ -10,7 +10,6 @@
  */
 
 #include "Microuds.h"
-#include "Microuds_com.h"
 #include "stdlib.h"
 #include "string.h"
 
@@ -68,14 +67,10 @@ MicroUDS_Sta_t MicroUDS_NegativeResponse(MicroUDS_NRC_t code)
 
 MicroUDS_Sta_t MicroUDS_Init(void)
 {
-
-    if (MICROUDS_HASH_SIZE == 0)
-        return MICROUDS_ERR_PARAM;
-
     memset(&MicroUDS, 0, sizeof(MicroUDS));
 
     /* 注册回调 */
-    MicroUDS_Handle->Transmit = MICROUDS_TRANSMIT_CB;
+    MicroUDS_Handle->Transmit = MicroUDS_Transmit;
 
     /* 分配记录表与初始化计数 */
     MicroUDS_Handle->Record.data = (uint8_t *)calloc(MICROUDS_SERVICE_RECORDS, sizeof(uint8_t));
@@ -439,6 +434,11 @@ MicroUDS_Sta_t MicroUDS_ReadMultiframeInfo(MicroUDS_MultiInfo_t *info)
 uint32_t MicroUDS_GetTickCount()
 {
     return MicroUDS_Handle->Tick;
+}
+
+MICROUDS_WEAK MicroUDS_Sta_t MicroUDS_Transmit(uint8_t *data,size_t len)
+{
+    return MICROUDS_OK;
 }
 
 /* EOF */
