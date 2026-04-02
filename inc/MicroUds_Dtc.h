@@ -1,12 +1,12 @@
 /**
- * @file    uds_security.h
+ * @file    MicroUds_Dtc.h
  * @author  https://github.com/xfp23
  * @version 0.1
  * @date    2026/04/02
  */
 
-#ifndef UDS_SECURITY_H_
-#define UDS_SECURITY_H_
+#ifndef MICROUDS_DTC_H_
+#define MICROUDS_DTC_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,4 +26,4 @@ extern "C" {
 }
 #endif
 
-#endif /* UDS_SECURITY_H_ */
+#endif /* MICROUDS_DTC_H_ */

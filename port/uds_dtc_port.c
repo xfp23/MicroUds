@@ -1,12 +1,12 @@
 /**
- * @file    uds_srv_34.c
+ * @file    uds_dtc_port.c
  * @author  https://github.com/xfp23
  * @version 0.1
- * @date    026/04/02
+ * @date    2026/04/02
  */
 
 /* Includes ------------------------------------------------------------------*/
-#include "uds_service.h"
+#include "uds_dtc_port.h"
 
 /* Private typedef -----------------------------------------------------------*/
 

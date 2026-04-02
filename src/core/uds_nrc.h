@@ -1,12 +1,12 @@
 /**
- * @file    uds_security.h
+ * @file    uds_nrc.h
  * @author  https://github.com/xfp23
  * @version 0.1
  * @date    2026/04/02
  */
 
-#ifndef UDS_SECURITY_H_
-#define UDS_SECURITY_H_
+#ifndef UDS_NRC_H_
+#define UDS_NRC_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,4 +26,4 @@ extern "C" {
 }
 #endif
 
-#endif /* UDS_SECURITY_H_ */
+#endif /* UDS_NRC_H_ */
