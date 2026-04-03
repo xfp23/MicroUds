@@ -8,11 +8,14 @@
 #ifndef MICROUDS_TYPES_H_
 #define MICROUDS_TYPES_H_
 
+/* Includes ------------------------------------------------------------------*/
+#include "MicroUds_conf.h"
+#include "stdlib.h"
+#include "stdint.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* Includes ------------------------------------------------------------------*/
 
 /* Exported types ------------------------------------------------------------*/
 

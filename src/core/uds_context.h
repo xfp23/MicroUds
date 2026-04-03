@@ -8,14 +8,18 @@
 #ifndef UDS_CONTEXT_H_
 #define UDS_CONTEXT_H_
 
+/* Includes ------------------------------------------------------------------*/
+#include "MicroUds_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Includes ------------------------------------------------------------------*/
-
 /* Exported types ------------------------------------------------------------*/
+// typedef struct 
+// {
 
+// }MicroUds_Context_Obj_t;
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/

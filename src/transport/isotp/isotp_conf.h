@@ -8,19 +8,21 @@
 #ifndef ISOTP_CONF_H_
 #define ISOTP_CONF_H_
 
+
+/* Includes ------------------------------------------------------------------*/
+#include "MicroUds_conf.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Includes ------------------------------------------------------------------*/
-
-/* Exported types ------------------------------------------------------------*/
-
-/* Exported constants --------------------------------------------------------*/
-
-/* Exported macros -----------------------------------------------------------*/
-
-/* Exported functions --------------------------------------------------------*/
+/**
+ * @brief UDS buffer Memory byte len
+ * 
+ */
+#ifndef MICROUDS_BUFFER_MEMORY_SIZE
+#define MICROUDS_BUFFER_MEMORY_SIZE (4150u)
+#endif
 
 #ifdef __cplusplus
 }

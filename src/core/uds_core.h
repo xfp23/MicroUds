@@ -8,16 +8,20 @@
 #ifndef UDS_CORE_H_
 #define UDS_CORE_H_
 
+/* Includes ------------------------------------------------------------------*/
+#include "MicroUds_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Includes ------------------------------------------------------------------*/
-
 /* Exported types ------------------------------------------------------------*/
-
+typedef struct 
+{
+    uint8_t buffer[MICROUDS_BUFFER_MEMORY_SIZE]; // uds core memory pool
+}Uds_Core_t; 
 /* Exported constants --------------------------------------------------------*/
-
+extern Uds_Core_t core_obj;
 /* Exported macros -----------------------------------------------------------*/
 
 /* Exported functions --------------------------------------------------------*/

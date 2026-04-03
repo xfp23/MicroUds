@@ -172,7 +172,8 @@ echo #ifdef __cplusplus
 echo extern "C" ^{
 echo #endif
 echo.
-echo /* Includes ------------------------------------------------------------------*/
+echo 
+/* Includes ------------------------------------------------------------------*/
 echo.
 echo /* Exported types ------------------------------------------------------------*/
 echo.
@@ -210,7 +211,8 @@ echo  * @version %VERSION%
 echo  * @date    %CURRENT_DATE%
 echo  */
 echo.
-echo /* Includes ------------------------------------------------------------------*/
+echo 
+/* Includes ------------------------------------------------------------------*/
 if /i "%~dp1"=="src\service\" (
     echo #include "uds_service.h"
 ) else (

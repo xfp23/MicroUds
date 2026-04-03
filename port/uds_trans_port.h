@@ -5,14 +5,15 @@
  * @date    2026/04/02
  */
 
-#ifndef UDS_CAN_PORT_H_
-#define UDS_CAN_PORT_H_
+#ifndef UDS_TRANS_PORT_H_
+#define UDS_TRANS_PORT_H_
+
+/* Includes ------------------------------------------------------------------*/
+#include "MicroUds_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* Includes ------------------------------------------------------------------*/
 
 /* Exported types ------------------------------------------------------------*/
 
@@ -22,8 +23,14 @@ extern "C" {
 
 /* Exported functions --------------------------------------------------------*/
 
+extern void MicroUds_Trans_ResponseAddress(uint8_t *data, size_t len);
+
+extern void MicroUds_Trans_PhysicalAddress(uint8_t *data, size_t len);
+
+extern void MicroUds_Trans_FunctionAddress(uint8_t *data, size_t len);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* UDS_CAN_PORT_H_ */
+#endif /* UDS_TRANS_PORT_H_ */
