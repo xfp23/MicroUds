@@ -18,7 +18,8 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 typedef struct 
 {
-    uint8_t buffer[MICROUDS_BUFFER_MEMORY_SIZE]; // uds core memory pool
+    uint8_t rx_buf[MICROUDS_RX_BUFFER_MEMORY_SIZE]; // uds core  rx memory pool
+    uint8_t tx_buf[MICROUDS_TX_BUFFER_MEMORY_SIZE];
 }Uds_Core_t; 
 /* Exported constants --------------------------------------------------------*/
 extern Uds_Core_t core_obj;

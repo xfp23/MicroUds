@@ -23,7 +23,7 @@ extern "C" {
 
 /* Exported functions --------------------------------------------------------*/
 
-extern void MicroUds_Trans_ResponseAddress(uint8_t *data, size_t len);
+extern int MicroUds_Trans_ResponseAddress(uint8_t *data, size_t len);
 
 extern void MicroUds_Trans_PhysicalAddress(uint8_t *data, size_t len);
 

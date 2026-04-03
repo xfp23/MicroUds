@@ -29,10 +29,14 @@
  *
  * @param[in] data Pointer to response buffer
  * @param[in] len  Length of response data
+ * 
+ * @return Success : 0 Fail : 1
  */
-void MicroUds_Trans_ResponseAddress(uint8_t *data, size_t len)
+int MicroUds_Trans_ResponseAddress(uint8_t *data, size_t len)
 {
     /* TODO: Implement transmission logic */
+
+    return 0;
 }
 
 

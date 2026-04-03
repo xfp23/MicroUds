@@ -5,8 +5,8 @@
  * @date    2026/04/02
  */
 
-#ifndef MICROUDS_CONF_H_
-#define MICROUDS_CONF_H_
+#ifndef MICROUDS_CONF_TEMPLATE_H_
+#define MICROUDS_CONF_TEMPLATE_H_
 
 /* Includes ------------------------------------------------------------------*/
 
@@ -26,4 +26,4 @@ extern "C" {
 }
 #endif
 
-#endif /* MICROUDS_CONF_H_ */
+#endif /* MICROUDS_CONF_TEMPLATE_H_ */

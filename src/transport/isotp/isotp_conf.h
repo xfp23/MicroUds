@@ -20,8 +20,8 @@ extern "C" {
  * @brief UDS buffer Memory byte len
  * 
  */
-#ifndef MICROUDS_BUFFER_MEMORY_SIZE
-#define MICROUDS_BUFFER_MEMORY_SIZE (4150u)
+#ifndef MICROUDS_RX_BUFFER_MEMORY_SIZE
+#define MICROUDS_RX_BUFFER_MEMORY_SIZE (4150u)
 #endif
 
 #ifdef __cplusplus

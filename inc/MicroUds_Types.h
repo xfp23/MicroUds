@@ -12,6 +12,7 @@
 #include "MicroUds_conf.h"
 #include "stdlib.h"
 #include "stdint.h"
+#include "stdbool.h"
 
 #ifdef __cplusplus
 extern "C" {
