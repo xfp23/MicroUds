@@ -15,10 +15,10 @@ extern "C" {
 #endif
 
 /**
- * @brief MicroUDS 时间基准频率 1000 = 1ms
+ * @brief 传输层 ISOTP-DOCAN
  * 
  */
-#define MICROUDS_FREQ_HZ (1000)
+#define MICROUDS_TRANSPORT_ISOTP_DOCAN
 
 /**
  * @brief 接收数据缓冲区
@@ -82,6 +82,9 @@ extern "C" {
  * 
  */
 #define MICROUDS_N_AR (10000)
+
+
+
 
 #ifdef __cplusplus
 }

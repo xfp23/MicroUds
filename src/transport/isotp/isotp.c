@@ -457,7 +457,7 @@ void Isotp_Init(void)
  * @brief 1ms滴答
  *
  */
-void Isotp_Tick(void)
+void Isotp_TickHandler(void)
 {
     ctx->tick++;
 }

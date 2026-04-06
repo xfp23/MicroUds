@@ -113,13 +113,6 @@ typedef struct
 
 typedef struct
 {
-    // struct
-    // {
-    //     bool en;
-    //     size_t len;
-    //     // uint8_t *data;
-    // } rx; // 从上层接收到数据
-
     struct
     {
         bool en;
@@ -182,12 +175,12 @@ typedef struct
  *
  * @note Must be called once before any other API.
  */
-void Isotp_Init(void);
+extern void Isotp_Init(void);
 
 /**
  * @brief Periodic tick (recommended 1ms)
  */
-void Isotp_Tick(void);
+extern void Isotp_TickHandler(void);
 
 /**
  * @brief Main polling handler

@@ -1,6 +1,6 @@
 # MicroUDS
 
-A lightweight UDS (Unified Diagnostic Services) stack implementation.
+UDS (Unified Diagnostic Services) stack implementation.
 
 ## Features
 
