@@ -15,6 +15,12 @@ extern "C" {
 #endif
 
 /**
+ * @brief MicroUDS 时间基准频率 1000 = 1ms
+ * 
+ */
+#define MICROUDS_FREQ_HZ (1000)
+
+/**
  * @brief 接收数据缓冲区
  * 
  */
@@ -54,7 +60,21 @@ extern "C" {
  * @brief N_CR
  * 
  */
-#define MICROUDS_N_CR (1000u)
+#define MICROUDS_N_CR (3000u)
+
+/**
+ * @brief N_Wait 流控帧等待次数
+ * 
+ */
+#define MICROUDS_FC_WAIT_MAX (10u)
+
+/**
+ * @brief 作为接收方等待wait发送时间间隔
+ * 
+ * 单位 : ms
+ * 
+ */
+#define MICROUDS_FC_WAITTIME (100u) 
 
 #ifdef __cplusplus
 }
