@@ -154,6 +154,10 @@ typedef struct
     uint32_t last_tick; 
 }Isotp_tx_packet_t;
 
+typedef struct 
+{
+    uint32_t tick; 
+}Isotp_N_As_t; // N_AS定时器
 typedef struct
 {
     volatile uint32_t tick; // 心跳
