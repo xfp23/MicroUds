@@ -40,24 +40,23 @@ typedef enum
     ISOTP_OK,
     ISOTP_ERR,
     ISOTP_BUSY,
-}Isotp_Status_t;
+} Isotp_Status_t;
 
 typedef enum
 {
-    ISOTP_RX_IDLE = 0,       
+    ISOTP_RX_IDLE = 0,
 
-    // ISOTP_RX_SF,           
-    
-    ISOTP_RX_FF,         
+    // ISOTP_RX_SF,
+
+    ISOTP_RX_FF,
     ISOTP_RX_FC,
-     
-    ISOTP_RX_CF,           
-    
+
+    ISOTP_RX_CF,
+
     ISOTP_RX_WAIT,
-    
+
     // ISOTP_RX_DONE,            // 接收完成
-    
-    
+
 } Isotp_RxState_t; // 接收状态机
 
 typedef enum
@@ -68,7 +67,7 @@ typedef enum
     ISOTP_TX_FC, // 接收流控帧
     ISOTP_TX_CF, // 发送连续帧
     // ISOTP_TX_DONE, // 完成
-}Isotp_TxState_t; // 发送状态机
+} Isotp_TxState_t; // 发送状态机
 
 typedef struct
 {
@@ -84,15 +83,15 @@ typedef struct
         bool isWaitFs;                  // 是否等待
         uint16_t wait_tick;
         uint16_t wait_count;
-        uint8_t Fc_payload[5];          // 流控帧负载
+        uint8_t Fc_payload[5]; // 流控帧负载
     } FC;
 
-    struct 
+    struct
     {
         uint8_t SN;
-        uint32_t timeout; 
-        
-    } CF; // 连续帧 
+        uint32_t timeout;
+
+    } CF; // 连续帧
 } Isotp_rx_packet_t;
 
 typedef struct
@@ -130,8 +129,7 @@ typedef struct
 
 } Isotp_UplayerTrans_t; // 上层传输数据接口
 
-
-typedef struct 
+typedef struct
 {
     uint8_t *buffer; // 发送数据缓冲区
     uint16_t total_len;
@@ -139,25 +137,28 @@ typedef struct
 
     bool Isbusy; // 当前是否忙?
 
-    struct {
+    struct
+    {
         uint8_t data[8];
         uint8_t Bs;
         uint16_t STmin;
         uint8_t Fs;
-    }FC;
+    } FC;
 
-    uint8_t SN; 
+    uint8_t SN;
     uint8_t FcWait_count; // 流控等待次数
-    uint32_t N_Bs; // N-bs计时器
-    uint16_t cf_count; 
+    uint32_t N_Bs;        // N-bs计时器
+    uint16_t cf_count;
 
-    uint32_t last_tick; 
-}Isotp_tx_packet_t;
+    uint32_t last_tick;
+} Isotp_tx_packet_t;
 
-typedef struct 
+typedef struct
 {
-    uint32_t tick; 
-}Isotp_N_As_t; // N_AS定时器
+    uint32_t last_tick;
+    bool en;
+} Isotp_N_Ar_t; // N_AS定时器
+
 typedef struct
 {
     volatile uint32_t tick; // 心跳
@@ -167,14 +168,77 @@ typedef struct
     Isotp_tx_packet_t tx_packet; // 发送数据包管理
     Isotp_UplayerTrans_t Uplayer;
     Isotp_RxState_t rx_state;
-    Isotp_TxState_t tx_state; 
+    Isotp_TxState_t tx_state;
+    Isotp_N_Ar_t N_Ar; // N_Ar定时器
 } Isotp_Obj_t;
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
 
 /* Exported functions --------------------------------------------------------*/
-extern void Isotp_Init(void);
+
+/**
+ * @brief Initialize ISO-TP module
+ *
+ * @note Must be called once before any other API.
+ */
+void Isotp_Init(void);
+
+/**
+ * @brief Periodic tick (recommended 1ms)
+ */
+void Isotp_Tick(void);
+
+/**
+ * @brief Main polling handler
+ *
+ * @param[out] ReceiveData      Pointer to received payload,It must be a pointer, not an array.
+ * @param[out] ReceiveDataLen   Payload length
+ * @param[out] ReceiveEn        True if new data available
+ * @param[out] isPhysical       Address type
+ *
+ * @note Must be called cyclically
+ */
+extern void Isotp_TimerHandler(uint8_t **ReceiveData,size_t *ReceiveDataLen,bool *ReceiveEn,bool *isPhysical);
+
+/**
+ * @brief Transmit data via ISO-TP
+ *
+ * @param[in] data   Payload buffer
+ * @param[in] len    Payload length
+ *
+ * @retval ISOTP_OK      Success
+ * @retval ISOTP_BUSY    Transport busy
+ * @retval ISOTP_ERR     Invalid parameter
+ */
+extern Isotp_Status_t Isotp_Transmit(uint8_t *data, size_t len);
+
+/**
+ * @brief Control FlowControl WAIT behavior
+ *
+ * @param IsWait
+ *        true  -> send WAIT
+ *        false -> send CTS (resume)
+ */
+extern void Isotp_ReceiveFcWait(bool IsWait);
+
+/**
+ * @brief Notify transport layer that CAN frame was sent successfully
+ *
+ * @note Used to stop N_As/N_Ar timer
+ */
+extern void Isotp_SendSuccess(void);
+
+/**
+ * @brief Input CAN frame (Physical Addressing)
+ */
+extern void Isotp_PhySicalAddress(uint8_t *data, size_t len);
+
+/**
+ * @brief Input CAN frame (Functional Addressing)
+ */
+extern void Isotp_FunctionAddress(uint8_t *data, size_t len);
+
 #ifdef __cplusplus
 }
 #endif

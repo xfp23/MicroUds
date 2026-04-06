@@ -76,6 +76,13 @@ extern "C" {
  */
 #define MICROUDS_FC_WAITTIME (100u) 
 
+/**
+ * @brief N_Ar定时器
+ *  单位 : ms
+ * 
+ */
+#define MICROUDS_N_AR (10000)
+
 #ifdef __cplusplus
 }
 #endif
