@@ -16,10 +16,17 @@ extern "C" {
 
 /**
  * @brief 传输层 ISOTP-DOCAN
+ * ISO-15765-2
+ * 
  * 
  */
-#define MICROUDS_TRANSPORT_ISOTP_DOCAN
+#define MICROUDS_TRANSPORT_DOCAN (1)
 
+/**
+ * @brief 传输层的传输方式
+ * 
+ */
+#define MICROUDS_TRANSPORT_WAY MICROUDS_TRANSPORT_DOCAN
 /**
  * @brief 接收数据缓冲区
  * 

@@ -16,10 +16,10 @@ extern "C" {
 #endif
 
 /* Exported types ------------------------------------------------------------*/
-// typedef struct 
-// {
-
-// }MicroUds_Context_Obj_t;
+typedef struct 
+{
+    uint8_t c;
+}Uds_Context_Obj_t;
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/

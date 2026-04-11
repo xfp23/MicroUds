@@ -12,6 +12,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "uds_trans_port.h"
+#include "uds_trans.h"
 
 /* ========================================================================== */
 /*                        Transport Layer - TX Interface                      */
@@ -34,8 +35,11 @@
  */
 int MicroUds_Trans_ResponseAddress(uint8_t *data, size_t len)
 {
-    /* TODO: Implement transmission logic */
+    /** TODO: Platform sends API */
+    
+    /** @brief User Code begin */
 
+     /** @brief User Code end */
     return 0;
 }
 
@@ -57,7 +61,12 @@ int MicroUds_Trans_ResponseAddress(uint8_t *data, size_t len)
  */
 void MicroUds_Trans_PhysicalAddress(uint8_t *data, size_t len)
 {
-    /* TODO: Call UDS stack entry function */
+    /** @brief User Code begin */
+
+    /** @brief User Code end */
+
+    /** TODO: Call UDS stack entry function */
+    uds_transport_PhySicalAddress(data,len);
 }
 
 
@@ -74,5 +83,27 @@ void MicroUds_Trans_PhysicalAddress(uint8_t *data, size_t len)
  */
 void MicroUds_Trans_FunctionAddress(uint8_t *data, size_t len)
 {
-    /* TODO: Call UDS stack entry function */
+    /** @brief User Code begin */
+
+    /** @brief User Code end */
+
+
+    /** TODO: Call UDS stack entry function */
+    uds_transport_FunctionAddress(data,len);
 }
+
+/**
+ * @brief Platform successfully sends a message frame callback
+ * 
+ */
+void MicroUds_Trans_TransmitCallback(void)
+{
+    /** @brief User Code begin */
+
+    /** @brief User Code end */
+
+
+    /**  TODO: Platform sends API */
+    uds_transport_TransmitCallback();
+}
+

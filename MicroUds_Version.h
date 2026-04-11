@@ -14,13 +14,19 @@
 extern "C" {
 #endif
 
-/* Exported types ------------------------------------------------------------*/
+/**
+ * @file MicroUds_version.h
+ * The current version of LVGL
+ */
 
-/* Exported constants --------------------------------------------------------*/
+#ifndef MICROUDS_VERSION_H
+#define MICROUDS_VERSION_H
 
-/* Exported macros -----------------------------------------------------------*/
+#define MICROUDS_VERSION_MAJOR 0
+#define MICROUDS_VERSION_MINOR 0
+#define MICROUDS_VERSION_PATCH 1
 
-/* Exported functions --------------------------------------------------------*/
+#endif /* MicroUds_VERSION_H */
 
 #ifdef __cplusplus
 }

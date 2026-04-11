@@ -21,19 +21,67 @@
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-
+Uds_TransPort_Obj_t Uds_TransPort = {0};
+static Uds_TransPort_Obj_t const *ctx = &Uds_TransPort;
 /* Private function prototypes -----------------------------------------------*/
 
 /* Exported functions --------------------------------------------------------*/
 
 /* Private functions ---------------------------------------------------------*/
 
-void uds_Trans_Init(void)
+void uds_transport_Init(void)
 {
+#if MICROUDS_TRANSPORT_WAY == MICROUDS_TRANSPORT_DOCAN
     Isotp_Init();
+#endif
 }
 
-void uds_Trans_TimerHandler()
+void uds_transport_TimerHandler(void)
 {
-
+#if MICROUDS_TRANSPORT_WAY == MICROUDS_TRANSPORT_DOCAN
+    Isotp_TimerHandler(ctx->recv_data,ctx->recv_len,ctx->recv_en,ctx->IsPhy_addr);
+#endif
 }
+
+void uds_transport_TickHandler(void)
+{
+#if MICROUDS_TRANSPORT_WAY == MICROUDS_TRANSPORT_DOCAN
+    Isotp_TickHandler();
+#endif
+}
+
+void uds_transport_PhySicalAddress(uint8_t *data,size_t len)
+{
+#if MICROUDS_TRANSPORT_WAY == MICROUDS_TRANSPORT_DOCAN
+    Isotp_PhySicalAddress(data,len);
+#endif
+}
+
+void uds_transport_Transmit(uint8_t *data,size_t len)
+{
+#if MICROUDS_TRANSPORT_WAY == MICROUDS_TRANSPORT_DOCAN
+    Isotp_Transmit(data,len);
+#endif
+}
+
+void uds_transport_FunctionAddress(uint8_t *data,size_t len)
+{
+#if MICROUDS_TRANSPORT_WAY == MICROUDS_TRANSPORT_DOCAN
+    Isotp_FunctionAddress(data,len);
+#endif
+}
+
+void uds_transport_TransmitCallback(void)
+{
+#if MICROUDS_TRANSPORT_WAY == MICROUDS_TRANSPORT_DOCAN
+    Isotp_SendSuccess();
+#endif
+}
+
+void uds_transport_ManageFcWait(bool iswait)
+{
+#if MICROUDS_TRANSPORT_WAY == MICROUDS_TRANSPORT_DOCAN
+    Isotp_ReceiveFcWait(iswait);
+#endif
+}
+

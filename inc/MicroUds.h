@@ -22,6 +22,24 @@ extern "C" {
 
 /* Exported functions --------------------------------------------------------*/
 
+/**
+ * @brief  初始化 MicroUds
+ * 
+ */
+extern void MicroUds_Init(void); 
+
+/**
+ * @brief 滴答定时器
+ * 
+ */
+extern void MicroUds_TickHandler(void);
+
+/**
+ * @brief 主循环1ms回调
+ * 
+ */
+extern void MicroUds_TimerHandler(void);
+
 #ifdef __cplusplus
 }
 #endif
