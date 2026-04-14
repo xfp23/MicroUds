@@ -90,7 +90,11 @@ extern "C" {
  */
 #define MICROUDS_N_AR (10000)
 
-
+/**
+ * @brief Number of sub-functions supported by the service
+ * 
+ */
+#define MICROUDS_SERVICE_SUPPORT_SUBFUNC_NUMBER (10u)
 
 
 #ifdef __cplusplus

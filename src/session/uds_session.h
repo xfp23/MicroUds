@@ -9,18 +9,16 @@
 #define UDS_SESSION_H_
 
 /* Includes ------------------------------------------------------------------*/
+#include "MicroUds_types.h"
+#include "uds_context.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Exported types ------------------------------------------------------------*/
+typedef struct {
 
-/* Exported constants --------------------------------------------------------*/
-
-/* Exported macros -----------------------------------------------------------*/
-
-/* Exported functions --------------------------------------------------------*/
+}Uds_Session_t;
 
 #ifdef __cplusplus
 }

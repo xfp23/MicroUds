@@ -19,7 +19,15 @@ extern "C" {
 #endif
 
 /* Exported types ------------------------------------------------------------*/
-
+typedef enum 
+{
+    MICROUDS_OK,
+    MICROUDS_ERR,
+    MICROUDS_FULL,
+    MICROUDS_NOT_FOUND,
+    MICROUDS_BUFF_OVERFLOW, // 缓冲区溢出
+    MICROUDS_BUSY,
+}MicroUds_Status_t;
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
