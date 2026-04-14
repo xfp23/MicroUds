@@ -45,7 +45,7 @@ extern void uds_transport_ManageFcWait(bool iswait);
  
 extern void uds_transport_PhySicalAddress(uint8_t *data,size_t len);
 
-extern void uds_transport_Transmit(uint8_t *data,size_t len);
+extern MicroUds_Status_t uds_transport_Transmit(uint8_t *data,size_t len);
 
 extern void uds_transport_FunctionAddress(uint8_t *data,size_t len);
 

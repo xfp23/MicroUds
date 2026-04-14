@@ -57,10 +57,20 @@ void uds_transport_PhySicalAddress(uint8_t *data,size_t len)
 #endif
 }
 
-void uds_transport_Transmit(uint8_t *data,size_t len)
+MicroUds_Status_t uds_transport_Transmit(uint8_t *data,size_t len)
 {
 #if MICROUDS_TRANSPORT_WAY == MICROUDS_TRANSPORT_DOCAN
-    Isotp_Transmit(data,len);
+    Isotp_Status_t ret = Isotp_Transmit(data,len);
+
+    if(ret == ISOTP_ERR)
+    {
+        return MICROUDS_ERR;
+    } else if(ret == ISOTP_BUSY)
+    {
+        return MICROUDS_BUSY;
+    }
+
+    return MICROUDS_OK;
 #endif
 }
 

@@ -9,6 +9,7 @@
 #define UDS_NRC_H_
 
 /* Includes ------------------------------------------------------------------*/
+#include "MicroUds_Types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,9 +73,14 @@ typedef enum {
 /* Exported constants --------------------------------------------------------*/
 
 /* Exported macros -----------------------------------------------------------*/
-
+typedef struct {
+    // uint8_t *PositiveResponse[128];
+    uint8_t PostRes_buf[MICROUDS_NRC_BUFFER_SIZE];
+}Uds_NrcObj_t;
 /* Exported functions --------------------------------------------------------*/
 extern MicroUds_Status_t Uds_Nrc_NegativeResponse(uint8_t sid,Uds_NrcCode_t code);
+
+extern MicroUds_Status_t Uds_Nrc_PositiveResponse(uint8_t sid, uint16_t ssid, uint8_t *data, size_t len);
 #ifdef __cplusplus
 }
 #endif

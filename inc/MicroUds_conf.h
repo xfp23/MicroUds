@@ -96,6 +96,12 @@ extern "C" {
  */
 #define MICROUDS_SERVICE_SUPPORT_SUBFUNC_NUMBER (10u)
 
+/**
+ * @brief 正响应缓冲区
+ * 
+ */
+#define MICROUDS_NRC_BUFFER_SIZE (128u)
+
 
 #ifdef __cplusplus
 }
