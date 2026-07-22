@@ -1,6 +1,6 @@
 /**
  * @file    uds_srv_28.c
- * @author  https://github.com/xfp23
+ * @author  https://xfp23.github.io
  * @version 0.1
  * @date    026/04/02
  */

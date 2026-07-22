@@ -8,7 +8,7 @@ setlocal enabledelayedexpansion
 
 :: =================配置区=================
 set ROOT=MicroUDS
-set AUTHOR=https://github.com/xfp23
+set AUTHOR=https://xfp23.github.io
 set YEAR=%date:~0,4%
 set CURRENT_DATE=%date:~4%
 set VERSION=0.1

@@ -1,6 +1,6 @@
 /**
  * @file    isotp.h
- * @author  https://github.com/xfp23
+ * @author  https://xfp23.github.io
  * @brief   ISO-15765-2
  * @version 0.1
  * @date    2026/04/02
