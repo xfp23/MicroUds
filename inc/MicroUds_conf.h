@@ -1,12 +1,5 @@
-/**
- * @file    MicroUds_conf.h
- * @author  https://xfp23.github.io
- * @version 0.1
- * @date    2026/04/02
- */
-
-#ifndef MICROUDS_CONF_H_
-#define MICROUDS_CONF_H_
+#ifndef MICROUDS_CONF_H
+#define MICROUDS_CONF_H
 
 /* Includes ------------------------------------------------------------------*/
 
