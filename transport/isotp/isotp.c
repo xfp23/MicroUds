@@ -1,6 +1,6 @@
 /**
 * @file isotp.c
-* @author https://github.com/xfp23
+* @author https://xfp23.github.io
 
 * @brief ISO-15765-2 (DoCAN) 传输层 — 严格符合标准的重写
 
