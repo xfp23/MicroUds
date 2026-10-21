@@ -10,6 +10,8 @@ extern "C"
 
 #define MICROUDS_SET_SESSION(x) ((uint32_t)((1U << (x)) - 1U))
 
+#define MICROUDS_GET_ASSIG(x) (x & 0x80)
+
 #ifdef __cplusplus
 }
 #endif

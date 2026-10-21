@@ -65,6 +65,8 @@ extern void MicroUds_SecurityReqSeed(uint8_t level, uint8_t *out, uint32_t *len)
  */
 extern void  MicroUds_SecurityGetKey(uint8_t *data,uint32_t *len);
 
+extern MicroUds_Status_t MicroUds_Transmit(const uint8_t *pdu, uint32_t len);
+
 #ifdef __cplusplus
 }
 #endif

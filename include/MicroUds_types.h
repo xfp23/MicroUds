@@ -21,6 +21,8 @@ typedef enum
     MICROUDS_OK,
     MICROUDS_ERR,
     MICROUDS_BUSY,
+    MICROUDS_PARAM_ERR,
+    MICROUDS_NOT_FOUND,
 } MicroUds_Status_t;
 
 typedef enum
@@ -46,7 +48,7 @@ typedef enum
     MICROUDS_SESSION_PROGRAM,  // 编程会话
     MICROUDS_SESSION_EXTEND,   // 扩展会话
     MICROUDS_SESSION_SECURITY, // 安全系统诊断会话
-} MicroUds_Session_t;
+} MicroUds_SessionType_t;
 
 typedef enum
 {
@@ -78,7 +80,18 @@ typedef enum
     MICROUDS_NRC_ROR = 0x78,   // RequestCorrectlyReceived-ResponsePending (请求正确接收，但响应挂起。**极为重要**：告诉诊断仪 ECU 正在忙，别超时断开，稍后会继续回复)
     MICROUDS_NRC_UDT = 0x7E,   // UploadDownloadNotAccepted (上传/下载未被接受)
     MICROUDS_NRC_TDS = 0x7F    // TransferDataSuspended (数据传输暂停)
-} Uds_Nrc_t;
+} MicroUds_Nrc_t;
+
+typedef struct {
+    uint32_t len;
+    uint8_t *payload; // 用户传给上层的数据，响应发出去
+    MicroUds_RespType_t resp_type; 
+
+    uint8_t nrc; 
+    void *Userdata;
+} MicroUds_ServiceCtx_t;
+
+typedef void (*MicroUds_ServiceFunc_t)(MicroUds_ServiceCtx_t*);
 
 typedef struct
 {
@@ -93,8 +106,8 @@ typedef struct
 {
     MicroUds_AddrType_t addr; // 地址
 
-    uint8_t ssid; // 会话
-    uint8_t sid;  // 服务
+    uint8_t sid; // 会话
+    uint8_t sub_func;  // 服务 
 
     uint8_t *payload;
     uint32_t len;
@@ -114,25 +127,18 @@ typedef struct
     uint32_t mask;      // 支持会话位掩码？4个会话，掩码做宽一点，为了方便扩展,都想做成64了哈哈，没必要吧
     uint32_t hold_tick; // 保持时间 配置项目，超过多久就退出当前会话
     uint32_t last_tick; // 上一次tick值，从MicroUds的tick中获取
+    volatile bool is_default; // 是否是默认会话 
 } MicroUds_Session_t;
-
-typedef struct
-{
-    uint8_t sid;             // 服务id
-    MicroUds_Session_t ssid; // 所属的会话
-
-    uint32_t permis; // 访问权限
-} MicruUds_ServiceSub_t;
 
 typedef struct
 {
     uint8_t level;                    // 当前需要的解锁等级
     uint8_t seed[MICROUDS_SEED_SIZE]; // 随机数种子
-    uint32_t seed_len; // 种子长度
+    uint32_t seed_len;                // 种子长度
     uint32_t session;                 // 会话访问
 
     uint8_t key[2][MICROUDS_KEY_SIZE]; // 密钥结果
-    uint32_t key_len[2]; 
+    uint32_t key_len[2];
 
     uint8_t step; // 状态机，用来确定流程
 
@@ -140,10 +146,47 @@ typedef struct
     volatile bool active; // 活跃
 } MicroUds_Security_t;    // 安全权限
 
+typedef struct {
+    uint8_t id;
+    
+    MicroUds_ServiceFunc_t callback;
+    void *Userdata; 
+} MicroUds_SubFuncTable_t;
+
+typedef struct
+{ 
+    uint8_t id;
+
+    void* Userdata; // 其实还没想好如何设计这里的回调方式，上下文如何设计？应该用统一的回调函数通知？还是让用户返回NRC 0 就是正响应? 先用void *暂时这样吧。
+    MicroUds_ServiceFunc_t callback;
+} MicroUds_SubFunc_t;
+
+typedef struct {
+    uint8_t sid; // 服务id
+
+    uint8_t permis; // 安全访问权限
+    MicroUds_SessionType_t session; // 会话
+}MicruUds_ServiceTable_t;
+
 typedef struct
 {
-    uint8_t req_sid; // 当前请求的sid
+    uint8_t sid;             // 服务id
+    MicroUds_SessionType_t ssid; // 所属的会话
 
+    uint8_t permis; // 安全访问权限
+    uint32_t sub_func_num; // 子功能数量
+
+    bool is_vaild; // 有效
+
+    MicroUds_SubFunc_t sub_func[MICROUDS_SUBFUNC_MAX_NUMBER]; // 子功能
+} MicruUds_ServiceSub_t;
+
+typedef struct
+{
+    MicruUds_ServiceSub_t serv[MICROUDS_SERVICE_MAX_NUMBER]; // 服务表，在此处注册
+    uint32_t serv_num; // 服务数量
+
+    volatile bool active;
 } MicruUds_Service_t;
 
 typedef struct

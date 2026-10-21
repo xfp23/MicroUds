@@ -18,6 +18,12 @@ extern "C"
 
 #define MICROUDS_VERSION "0.0.1"
 
+// MICROUDS 频率 (单位: HZ) 与MicroUds_TickHandler(); 的调用频率保持一致
+#define MICROUDS_FREQ_HZ 1000u
+
+// 会话保持时长
+#define MICROUDS_SESSION_HOLD_TICK 5000u
+
 #define MICROUDS_USE_MEM 0u
 
 #define MICROUDS_RESPONSE_BUF_SIZE 32u
@@ -30,6 +36,10 @@ extern "C"
 
 // 密钥大小
 #define MICROUDS_KEY_SIZE 4u
+
+#define MICROUDS_SERVICE_MAX_NUMBER 10u
+
+#define MICROUDS_SUBFUNC_MAX_NUMBER 3u
 
 #ifdef __cplusplus
 }
