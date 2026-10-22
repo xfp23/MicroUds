@@ -889,6 +889,8 @@ MicroUds_Status_t MicroUds_RxIndication(const uint8_t *data, size_t len, MicroUd
     //   0x31 是 31 <01/02/03> <RID高> <RID低> [选项]，子功能(启动/停止/取结果)+2字节RID，子功能层依然适用，RID 在服务回调里解析。
     //   现在的做法: 把 0x22/0x2E 注册成 "没有 HAS_SUBFUNC 的服务"，在服务级回调里自己解析 DID。
     //   等 0x22/0x2E 写多了，再抽一层 DID 表(DID + 读写权限 + 回调)，由 0x22 内置服务统一遍历 DID 并检查权限。
+
+    // 我想应该把DID RID也写进内核,作为特殊的服务处理,独立一层接口,注册，跟通知
     return MICROUDS_OK;
 }
 

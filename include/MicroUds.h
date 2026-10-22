@@ -41,7 +41,7 @@ extern void MicroUds_TickHandler(void);
 extern void MicroUds_TimerHandler(void);
 
 /**
- * @brief 输入一条完整的请求PDU (由传输层 MicroIostp 调用)
+ * @brief 输入一条完整的请求PDU (由传输层 MicroIsotp 调用)
  * 
  * @param data 完整PDU，含SID。内核会拷贝，函数返回后data可被复用
  * @param len  长度
@@ -95,7 +95,7 @@ static inline void MicroUds_CtxPending(MicroUds_ServiceCtx_t *ctx)
 /* ============================== 用户需要实现的弱函数 ============================== */
 
 /**
- * @brief 发送一帧完整响应PDU (弱函数，用户重写，一般转给 MicroIostp)
+ * @brief 发送一帧完整响应PDU (弱函数，用户重写，一般转给 MicroIsotp)
  * 
  * @return MICROUDS_OK 已接受发送；MICROUDS_BUSY 传输层暂时忙，内核下个周期重试；其他 丢弃本条响应
  * @note   目前没有"发送完成确认"，0x10的会话切换在 Transmit 返回OK时就生效。
