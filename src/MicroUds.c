@@ -14,7 +14,7 @@
 
 MicroUds_Obj_t uds_obj = {0};
 
-bool MicroUds_SecurityVerity(void);
+static bool MicroUds_SecurityVerity(void);
 
 /**
  * @brief 构造正响应
@@ -326,13 +326,13 @@ void MicroUds_RxIndication(const uint8_t *data, size_t len, MicroUds_AddrType_t 
 }
 
 /**
- * @brief 弱函数，重写 避免vscode爆红，先不放弱符号
+ * @brief 弱函数，用户重写 重新配置了cmake,弱符号不报错了哈哈
  *
  * @param pud
  * @param len
  * @return MicroUds_Status_t
  */
-MicroUds_Status_t /*__attribute__((weak))*/ MicroUds_Transmit(const uint8_t *pdu, uint32_t len)
+MicroUds_Status_t __attribute__((weak)) MicroUds_Transmit(const uint8_t *pdu, uint32_t len)
 {
     (void)pdu;
     (void)len;
@@ -344,7 +344,7 @@ MicroUds_Status_t /*__attribute__((weak))*/ MicroUds_Transmit(const uint8_t *pdu
  * @brief 弱函数，由用户重写
  *
  */
-void /*__attribute__((weak))*/ MicroUds_SecurityReqSeed(uint8_t level, uint8_t *out, uint32_t *len) // 请求种子
+void __attribute__((weak)) MicroUds_SecurityReqSeed(uint8_t level, uint8_t *out, uint32_t *len) // 请求种子
 {
     (void)level;
     (void)out;
@@ -355,7 +355,7 @@ void /*__attribute__((weak))*/ MicroUds_SecurityReqSeed(uint8_t level, uint8_t *
  * @brief 弱函数，用户重写
  *
  */
-void /*__attribute__((weak))*/ MicroUds_SecurityGetKey(uint8_t *key, uint32_t *len)
+void __attribute__((weak)) MicroUds_SecurityGetKey(uint8_t *key, uint32_t *len)
 {
     (void)key;
     (void)len;
