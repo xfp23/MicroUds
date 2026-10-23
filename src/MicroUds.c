@@ -21,6 +21,9 @@ static void MicroUds_SessionSwitch(uint8_t ssid);
 static void MicroUds_RequestDone(void);
 static void MicroUds_ServiceRun(const MicroUds_ServiceEntry_t *serv, const MicroUds_SubFunc_t *sub);
 
+extern void MicroUds_Did_0x2EWriteHandler(MicroUds_ServiceCtx_t *ctx);
+extern void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx);
+
 /* ======================================================================
  *                              响应构造
  * ====================================================================== */
@@ -810,6 +813,13 @@ MicroUds_Status_t MicroUds_Init(void)
     // 0x3E: 所有会话可用，允许功能寻址，支持抑制位 (3E 80)，请求长度固定 2 字节
     MicroUds_RegisterBuiltin(0x3E, MICROUDS_SERV_FLAG_SUPPRESS | MICROUDS_SERV_FLAG_FUNC_ADDR,
                              uds_obj.session.mask, 0, 2, 2, MicroUds_SvcTesterPresent);
+
+    // 0x22: 读标识符
+    MicroUds_RegisterBuiltin(0x22, MICROUDS_SERV_FLAG_SUPPRESS,MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND) | MICROUDS_SET_SESSION(MICROUDS_SESSION_DEFAULT),
+                            0,MICROUDS_DID_RESP_MIN_LEN,MICROUDS_DID_RESP_MAX_LEN,MicroUds_Did_0x22ReadHandler);
+    // 0x2E: 写标识
+    MicroUds_RegisterBuiltin(0x2E, MICROUDS_SERV_FLAG_SUPPRESS,MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND) | MICROUDS_SET_SESSION(MICROUDS_SESSION_DEFAULT),
+                            0,MICROUDS_DID_RESP_MIN_LEN,MICROUDS_DID_RESP_MAX_LEN,MicroUds_Did_0x22ReadHandler);
 
     return MICROUDS_OK;
 }

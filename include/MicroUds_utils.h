@@ -35,6 +35,8 @@ extern "C"
 // [REVIEW] 回绕安全的超时判断: now - start 用无符号减法，tick溢出也正确
 #define MICROUDS_TICK_ELAPSED(now, start, dur) (((uint32_t)((now) - (start))) >= (uint32_t)(dur))
 
+#define MICROUDS_SIZEOF(x) ((uint32_t)(sizeof(x) / sizeof(x[0])))
+
 #ifdef __cplusplus
 }
 #endif

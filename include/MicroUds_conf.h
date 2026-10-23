@@ -76,6 +76,16 @@ extern "C"
 #error "MICROUDS_RESPONSE_BUF_SIZE too small"
 #endif
 
+#define MICROUDS_DID_ENABLE 1u
+
+#define MICROUDS_DID_READ_SIZE 8u
+
+#define MICROUDS_DID_WRITE_SIZE 8u
+
+#define MICROUDS_DID_RESP_MAX_LEN 32u
+
+#define MICROUDS_DID_RESP_MIN_LEN 2u
+
 #ifdef __cplusplus
 }
 #endif

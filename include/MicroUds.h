@@ -12,6 +12,7 @@
 #define MICROUDS_H
 
 #include "MicroUds_types.h"
+#include "MicroUds_Did.h"
 
 #ifdef __cplusplus
 extern "C"
