@@ -1,3 +1,13 @@
+/**
+ * @file MicroUds_Did_types.h
+ * @author xfp23
+ * @brief 
+ * @version 0.1
+ * @date 2026-10-24
+ * 
+ * @copyright Copyright (c) 2026
+ * 
+ */
 #ifndef MICROUDS_DID_TYPES_H
 #define MICROUDS_DID_TYPES_H
 
@@ -8,17 +18,22 @@ extern "C"
 {
 #endif
 
+typedef enum {
+    MICROUDSDID_DYNA_ID,
+    MICROUDSDID_DYNA_ADDRESS,
+} MicroUdsDid_DynaType_t;
+
 typedef struct
 {
-    uint16_t Did;     // 标识符
-    uint16_t Did_len; // did数量
-
+    // < 由内核填写，用户只读回调
+    uint16_t Did;      // 标识符
+    uint16_t Did_len;  // did数量
     uint8_t *data;     // 数据
     uint16_t data_len; // 数据长度
+    void *Userdata;    // 用户数据
 
+    // < 由用户填写,内核负责处理
     uint8_t nrc; // 用户输出
-
-    void *Userdata; // 用户数据
 
 } MicroUdsDid_Ctx_t;
 
@@ -58,13 +73,29 @@ typedef struct
     MicroUdsDid_Cb_t cb;
 } MicroUdsDidItem_Config_t; // 配置列表
 
+typedef struct {
+    uint16_t dync_did; // 动态标识符
+    // uint32_t addr; // 原标识符
+ 
+    MicroUdsDid_DynaType_t type;
+    uint8_t *data;
+    uint16_t data_len;
+
+    MicroUdsDidItem_t Item[MICROUDS_DID_DYNAMICALLY_ITEM_LEN]; 
+
+    uint16_t item_num; 
+
+    volatile bool is_active; // 这里用激活标识符而不是有效
+}MicroUdsDid_Dynamically_t;
+
 typedef struct
 {
     MicroUdsDidItem_t Read[MICROUDS_DID_READ_SIZE];
     MicroUdsDidItem_t Write[MICROUDS_DID_WRITE_SIZE];
-
+    MicroUdsDid_Dynamically_t Dynamically[MICROUDS_DID_DYNAMICALLY_SIZE];
     uint16_t read_num;
     uint16_t write_num;
+    uint16_t dync_num; 
 
 } MicroUdsDid_Obj_t;
 

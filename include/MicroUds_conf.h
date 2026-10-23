@@ -86,6 +86,10 @@ extern "C"
 
 #define MICROUDS_DID_RESP_MIN_LEN 2u
 
+#define MICROUDS_DID_DYNAMICALLY_SIZE 8u
+
+#define MICROUDS_DID_DYNAMICALLY_ITEM_LEN 5u
+
 #ifdef __cplusplus
 }
 #endif

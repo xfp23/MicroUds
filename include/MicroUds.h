@@ -105,6 +105,12 @@ static inline void MicroUds_CtxPending(MicroUds_ServiceCtx_t *ctx)
 extern MicroUds_Status_t MicroUds_Transmit(const uint8_t *pdu, uint32_t len);
 
 /**
+ * @brief 响应完成通知,由ISOTP响应发送完成后回调
+ * 
+ */
+extern void MicroUds_HwRespTxDone(void);
+
+/**
  * @brief 生成种子 (弱函数，用户重写)
  * 
  * @param level 安全等级 (27 01 -> 1，27 03 -> 2 ...)
