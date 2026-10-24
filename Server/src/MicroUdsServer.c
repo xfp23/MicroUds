@@ -56,9 +56,9 @@ static void MicroUdsServer_ServiceRun(const MicroUdsServer_ServiceEntry_t *serv,
  *          2. 有子功能的服务，正响应必须回显子功能(如 50 03 ..、67 01 <seed>、7E 00)，原来没有回显
  *          3. 请求抑制位、寻址方式在这里就保存进响应，不再等发送时去读(那时 pdu 可能已被新请求覆盖)
  */
-static MicroUdsServer_Status_t NegativeResponse(uint8_t sid, uint8_t nrc);
+static MicroUds_Status_t NegativeResponse(uint8_t sid, uint8_t nrc);
 
-static MicroUdsServer_Status_t PositiveResponse(uint8_t sid, bool has_sub, uint8_t sub, const uint8_t *payload, uint32_t len)
+static MicroUds_Status_t PositiveResponse(uint8_t sid, bool has_sub, uint8_t sub, const uint8_t *payload, uint32_t len)
 {
     if (uds_obj.resp.active)
     {
@@ -106,7 +106,7 @@ static MicroUdsServer_Status_t PositiveResponse(uint8_t sid, bool has_sub, uint8
  * @param nrc
  * [REVIEW] 负响应不受"抑制正响应"位影响，Inhibit 恒为0。原来是只要请求带了 0x80 位，负响应也被吞掉
  */
-static MicroUdsServer_Status_t NegativeResponse(uint8_t sid, uint8_t nrc)
+static MicroUds_Status_t NegativeResponse(uint8_t sid, uint8_t nrc)
 {
     if (uds_obj.resp.active)
     {
@@ -216,7 +216,7 @@ static void MicroUdsServer_ResponseHandler(void)
         uds_obj.resp.tx_tick = uds_obj.tick;
         uds_obj.tx_done = false;
 
-        MicroUdsServer_Status_t st = MicroUdsServer_Transmit((const uint8_t *)uds_obj.resp.data, uds_obj.resp.len);
+        MicroUds_Status_t st = MicroUdsServer_Transmit((const uint8_t *)uds_obj.resp.data, uds_obj.resp.len);
 
         if (st == MICROUDS_OK)
         {
@@ -553,7 +553,7 @@ static void MicroUdsServer_NoSubRegisterBuiltin(uint8_t sid, uint8_t flags, uint
 }
 #endif
 
-MicroUdsServer_Status_t MicroUdsServer_ServiceRegisterServ(const MicroUdsServer_ServiceTable_t *table, size_t size)
+MicroUds_Status_t MicroUdsServer_ServiceRegisterServ(const MicroUdsServer_ServiceTable_t *table, size_t size)
 {
     if (table == NULL || size == 0 || size > MICROUDS_SERVICE_MAX_NUMBER)
     {
@@ -608,7 +608,7 @@ MicroUdsServer_Status_t MicroUdsServer_ServiceRegisterServ(const MicroUdsServer_
     return MICROUDS_OK;
 }
 
-MicroUdsServer_Status_t MicroUdsServer_ServiceRegisterSubFunc(uint8_t sid, const MicroUdsServer_SubFuncTable_t *table, size_t size)
+MicroUds_Status_t MicroUdsServer_ServiceRegisterSubFunc(uint8_t sid, const MicroUdsServer_SubFuncTable_t *table, size_t size)
 {
     if (table == NULL || size == 0 || size > MICROUDS_SUBFUNC_MAX_NUMBER)
     {
@@ -939,7 +939,7 @@ static void MicroUdsServer_ServiceHandler(void)
  *                              对外接口
  * ====================================================================== */
 
-MicroUdsServer_Status_t MicroUdsServer_Init(void)
+MicroUds_Status_t MicroUdsServer_Init(void)
 {
     memset(&uds_obj, 0, sizeof(MicroUdsServer_Obj_t));
     uds_obj.session.mask = MICROUDS_SESSION_MASK_UPTO(MICROUDS_SESSION_MASK); // 支持 MICROUDS_SESSION_MASK 个会话 (会话1..N)
@@ -1039,7 +1039,7 @@ void MicroUdsServer_HwRespTxDone(void)
     uds_obj.tx_done = true;
 }
 
-MicroUdsServer_Status_t MicroUdsServer_RxIndication(const uint8_t *data, size_t len, MicroUdsServer_AddrType_t addrType)
+MicroUds_Status_t MicroUdsServer_RxIndication(const uint8_t *data, size_t len, MicroUds_AddrType_t addrType)
 {
     // [REVIEW] 原来是 "if (len < 2 || data == NULL) { NegativeResponse(data[0], ...) }"
     //   1. data==NULL 时还去读 data[0]，直接空指针解引用
@@ -1112,9 +1112,9 @@ uint8_t MicroUdsServer_GetSecurityLevel(void)
  *
  * @param pud
  * @param len
- * @return MicroUdsServer_Status_t
+ * @return MicroUds_Status_t
  */
-MicroUdsServer_Status_t __attribute__((weak)) MicroUdsServer_Transmit(const uint8_t *pdu, uint32_t len)
+MicroUds_Status_t __attribute__((weak)) MicroUdsServer_Transmit(const uint8_t *pdu, uint32_t len)
 {
     (void)pdu;
     (void)len;

@@ -24,18 +24,18 @@ extern "C"
  * @brief 初始化 DID 模块 (由 MicroUdsServer_Init 调用，用户不需要自己调)。
  *        所以用户的 DID 表必须在 MicroUdsServer_Init 之后注册。
  */
-extern MicroUdsServer_Status_t MicroUdsServer_Did_Init(void);
+extern MicroUds_Status_t MicroUdsServer_Did_Init(void);
 
 /**
  * @brief 注册可读DID。可多次调用，后面的追加在前面的后面。整张表要么全部成功要么全部不注册
  * [REVIEW] 返回 PARAM_ERR 的情况: 空表、超过容量、DID重复、data_len为0或超过响应缓冲、读表项 data 为空
  */
-extern MicroUdsServer_Status_t MicroUdsServer_Did_RegisterReadItem(const MicroUdsServerDidItem_Config_t *table, size_t size);
+extern MicroUds_Status_t MicroUdsServer_Did_RegisterReadItem(const MicroUdsServerDidItem_Config_t *table, size_t size);
 
 /**
  * @brief 注册可写DID (不在写表里的DID就是只读)。规则同上；写表项 data 和 cb 至少要有一个
  */
-extern MicroUdsServer_Status_t MicroUdsServer_Did_RegisterWriteItem(const MicroUdsServerDidItem_Config_t *table, size_t size);
+extern MicroUds_Status_t MicroUdsServer_Did_RegisterWriteItem(const MicroUdsServerDidItem_Config_t *table, size_t size);
 
 /**
  * @brief 查找动态DID，未定义返回 NULL

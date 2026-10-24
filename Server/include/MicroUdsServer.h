@@ -26,9 +26,9 @@ extern "C"
 /**
  * @brief 初始化。会同时注册内核内置服务 0x10 / 0x27 / 0x3E，这三个SID不能再被用户注册
  * 
- * @return MicroUdsServer_Status_t 
+ * @return MicroUds_Status_t 
  */
-extern MicroUdsServer_Status_t MicroUdsServer_Init(void);
+extern MicroUds_Status_t MicroUdsServer_Init(void);
 
 /**
  * @brief 心跳，频率与 MICROUDS_FREQ_HZ 一致，可在定时中断里调用
@@ -53,7 +53,7 @@ extern void MicroUdsServer_TimerHandler(void);
  *         MICROUDS_PARAM_ERR 参数非法(空指针或长度0，没有SID也就无法构造任何响应，直接丢弃)
  * @note  [REVIEW] 原来是 void。返回值让传输层知道请求有没有被接收。
  */
-extern MicroUdsServer_Status_t MicroUdsServer_RxIndication(const uint8_t *data, size_t len, MicroUdsServer_AddrType_t addrType);
+extern MicroUds_Status_t MicroUdsServer_RxIndication(const uint8_t *data, size_t len, MicroUds_AddrType_t addrType);
 
 /* ============================== 服务注册 ============================== */
 // [REVIEW] 原头文件里漏了这两个函数的声明
@@ -61,12 +61,12 @@ extern MicroUdsServer_Status_t MicroUdsServer_RxIndication(const uint8_t *data, 
 /**
  * @brief 注册服务(追加)。整张表要么全部成功，要么全部不注册。SID重复会失败
  */
-extern MicroUdsServer_Status_t MicroUdsServer_ServiceRegisterServ(const MicroUdsServer_ServiceTable_t *table, size_t size);
+extern MicroUds_Status_t MicroUdsServer_ServiceRegisterServ(const MicroUdsServer_ServiceTable_t *table, size_t size);
 
 /**
  * @brief 为已注册的、带 HAS_SUBFUNC 标志的服务注册子功能表(替换该服务原有的子功能表)
  */
-extern MicroUdsServer_Status_t MicroUdsServer_ServiceRegisterSubFunc(uint8_t sid, const MicroUdsServer_SubFuncTable_t *table, size_t size);
+extern MicroUds_Status_t MicroUdsServer_ServiceRegisterSubFunc(uint8_t sid, const MicroUdsServer_SubFuncTable_t *table, size_t size);
 
 /* ============================== 状态查询 ============================== */
 
@@ -104,7 +104,7 @@ static inline void MicroUdsServer_CtxPending(MicroUdsServer_ServiceCtx_t *ctx)
  * @note   目前没有"发送完成确认"，0x10的会话切换在 Transmit 返回OK时就生效。
  *         后续建议增加 MicroUdsServer_TxConfirmation() 让传输层在真正发完后通知内核。
  */
-extern MicroUdsServer_Status_t MicroUdsServer_Transmit(const uint8_t *pdu, uint32_t len);
+extern MicroUds_Status_t MicroUdsServer_Transmit(const uint8_t *pdu, uint32_t len);
 
 /**
  * @brief 响应完成通知,由ISOTP响应发送完成后回调

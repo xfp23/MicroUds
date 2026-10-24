@@ -64,7 +64,7 @@ static uint8_t MicroUdsServer_Did_Access(const MicroUdsServer_ServiceCtx_t *ctx,
     return 0u;
 }
 
-MicroUdsServer_Status_t MicroUdsServer_Did_Init(void)
+MicroUds_Status_t MicroUdsServer_Did_Init(void)
 {
     memset(&did_obj, 0, sizeof(MicroUdsServerDid_Obj_t));
 
@@ -80,7 +80,7 @@ MicroUdsServer_Status_t MicroUdsServer_Did_Init(void)
  *   你的注释是"只能注册一个表，不允许附加"。我改成了"可以多次注册，追加在后面"，原因: 不同的业务模块(应用、标定、刷写)
  *   各自注册自己的DID，比让某一个模块把所有DID集中到一张表里更好维护；如果你就是想限制成一次，把 *num != 0 时直接返回 ERR 即可。
  */
-static MicroUdsServer_Status_t MicroUdsServer_Did_RegisterItems(MicroUdsServerDidItem_t *dst, uint16_t *num, uint16_t max,
+static MicroUds_Status_t MicroUdsServer_Did_RegisterItems(MicroUdsServerDidItem_t *dst, uint16_t *num, uint16_t max,
                                                     const MicroUdsServerDidItem_Config_t *table, size_t size, bool is_write)
 {
     if (table == NULL || size == 0u || size > max || ((size_t)*num + size) > max)
@@ -149,12 +149,12 @@ static MicroUdsServer_Status_t MicroUdsServer_Did_RegisterItems(MicroUdsServerDi
 }
 
 // 只能注册一个表，不允许附加  [REVIEW] 见 MicroUdsServer_Did_RegisterItems 上面的说明，现在可以追加
-MicroUdsServer_Status_t MicroUdsServer_Did_RegisterReadItem(const MicroUdsServerDidItem_Config_t *table, size_t size)
+MicroUds_Status_t MicroUdsServer_Did_RegisterReadItem(const MicroUdsServerDidItem_Config_t *table, size_t size)
 {
     return MicroUdsServer_Did_RegisterItems(did_obj.Read, &did_obj.read_num, MICROUDS_DID_READ_SIZE, table, size, false);
 }
 
-MicroUdsServer_Status_t MicroUdsServer_Did_RegisterWriteItem(const MicroUdsServerDidItem_Config_t *table, size_t size)
+MicroUds_Status_t MicroUdsServer_Did_RegisterWriteItem(const MicroUdsServerDidItem_Config_t *table, size_t size)
 {
     return MicroUdsServer_Did_RegisterItems(did_obj.Write, &did_obj.write_num, MICROUDS_DID_WRITE_SIZE, table, size, true);
 }
