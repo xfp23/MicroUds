@@ -10,6 +10,10 @@
  */
 #include "MicroUds.h"
 
+#if MICROUDS_DID_ENABLE
+#include "MicroUds_Did.h"
+#endif
+
 // MICROUDS_INSTANCE_NUM 先不做多实例
 
 // [REVIEW] 原来是非static的全局，没有任何地方在外部引用它，改为文件内可见
@@ -25,11 +29,20 @@ static void MicroUds_ServiceRun(const MicroUds_ServiceEntry_t *serv, const Micro
  *                              DID模块
  * ====================================================================== */
 
-extern void MicroUds_Did_0x2EWriteHandler(MicroUds_ServiceCtx_t *ctx);
-extern void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx);
-extern void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx);
+// [REVIEW] 原来是手写的三条 extern 声明: DID 模块关闭(MICROUDS_DID_ENABLE=0)时，MicroUds_Did.c 里是空的，这里却还引用这三个函数，
+//          链接会报 undefined reference。改成包含头文件 + 条件编译(见文件开头的 #include 和 MicroUds_Init)。
+// extern void MicroUds_Did_0x2EWriteHandler(MicroUds_ServiceCtx_t *ctx);
+// extern void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx);
+// extern void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx);
 
 // [ask] RID看起来就是个SID + SUB 的普通服务而已，不需要单独像DID这样由内核自带这个服务吧,让用户去注册更好吗?
+// [REVIEW] 技术上可以，让用户自己注册 0x31 + 子功能表(01/02/03)，在回调里解析 RID 就能跑，你的理解没错。
+//          但 RID 和 DID 的区别在于 RID 带"状态": 一个例程有 未启动/运行中/已完成/已停止 四种状态，
+//          "没启动就 stop / 没启动就取结果 -> 0x24"、"运行中又收到 start -> 0x24"、"回默认会话时要终止运行中的例程"
+//          这些规则每个例程都一样，让每个用户在回调里各写一遍很容易写出不一致的行为；另外每个RID各自的会话/安全权限也需要一张表。
+//          所以如果你的项目里RID很少(两三个)，让用户自己注册 0x31 完全够用；RID一多就建议和DID一样做成可选的内置模块
+//          (RID表 + 每个RID的 start/stop/result 回调 + 状态管理)。可以先让用户自己注册，等RID变多再抽出来，两种方式不冲突，
+//          因为内核只认"服务表里有没有0x31"，内置模块也是通过同一个注册接口接进来的。
 
 /* ======================================================================
  *                              响应构造
@@ -114,6 +127,18 @@ static MicroUds_Status_t NegativeResponse(uint8_t sid, uint8_t nrc)
 }
 
 /**
+ * @brief 把刚刚排队的响应标记为"最终响应"
+ * [REVIEW] 为了配合 MicroUds_HwRespTxDone: 只有最终响应发送完成(或被静默丢弃)之后才释放请求。0x78 不是最终响应，不调用这个函数。
+ */
+static void MicroUds_RespMarkFinal(void)
+{
+    if (uds_obj.resp.active)
+    {
+        uds_obj.resp.final = true;
+    }
+}
+
+/**
  * @brief 功能寻址下需要静默的负响应
  * [REVIEW] 功能寻址时 0x11/0x12/0x31/0x7E/0x7F 的负响应不发送(广播请求里"不是我的服务"不应该所有ECU都回一遍)。
  *          功能寻址的"正响应"是正常发送的。具体以你们OEM规范为准。
@@ -124,10 +149,49 @@ static bool MicroUds_IsSilentNrc(uint8_t nrc)
            (nrc == MICROUDS_NRC_SFNSIAS) || (nrc == MICROUDS_NRC_SNSIAS);
 }
 
+/**
+ * @brief 一条响应处理结束: 应用待生效的会话切换，释放响应缓冲，如果是最终响应就释放请求
+ * [REVIEW] 这里是"响应真正结束"的唯一出口，三种情况都会走到:
+ *          1) ISOTP 通知发送完成(MicroUds_HwRespTxDone)  2) 响应被静默丢弃(抑制位/功能寻址)，根本没有发送，也就不会有完成通知
+ *          3) 传输层发送失败 / 等完成通知超时
+ */
+static void MicroUds_ResponseFinish(void)
+{
+    bool final = uds_obj.resp.final;
+
+    // 0x10 的会话切换: 响应真正发出去之后才生效 (见 MicroUds_ServiceRun 里关于 apply_ssid 的说明)
+    if (uds_obj.resp.apply_ssid != 0u)
+    {
+        MicroUds_SessionSwitch(uds_obj.resp.apply_ssid);
+    }
+
+    memset(&uds_obj.resp, 0, sizeof(MicroUds_Response_t));
+
+    if (final)
+    {
+        MicroUds_RequestDone(); // 最终响应结束 -> 释放请求，S3 重新计时
+    }
+}
+
 static void MicroUds_ResponseHandler(void)
 {
     if (!uds_obj.resp.active)
     {
+        return;
+    }
+
+    // [REVIEW] 已经交给ISOTP，等发送完成通知
+    if (uds_obj.resp.tx_wait)
+    {
+        if (uds_obj.tx_done)
+        {
+            uds_obj.tx_done = false;
+            MicroUds_ResponseFinish();
+        }
+        else if (MICROUDS_TICK_ELAPSED(uds_obj.tick, uds_obj.resp.tx_tick, MICROUDS_MS_TO_TICK(MICROUDS_TX_CONFIRM_TIMEOUT_MS)))
+        {
+            MicroUds_ResponseFinish(); // 完成通知一直没来: 超时保护，避免请求永远卡住
+        }
         return;
     }
 
@@ -145,22 +209,29 @@ static void MicroUds_ResponseHandler(void)
 
     if (!drop)
     {
+        // 先进入"等待完成"状态再调用 Transmit: 万一 Transmit 内部同步调用了 MicroUds_HwRespTxDone，通知也不会丢
+        uds_obj.resp.tx_wait = true;
+        uds_obj.resp.tx_tick = uds_obj.tick;
+        uds_obj.tx_done = false;
+
         MicroUds_Status_t st = MicroUds_Transmit((const uint8_t *)uds_obj.resp.data, uds_obj.resp.len);
+
+        if (st == MICROUDS_OK)
+        {
+            return; // 已交给传输层，等 MicroUds_HwRespTxDone()
+        }
+
+        uds_obj.resp.tx_wait = false;
 
         if (st == MICROUDS_BUSY)
         {
             return; // [REVIEW] 传输层忙: 保留响应，下个周期重试(原来不管返回值，直接清掉，响应就丢了)
         }
-        // 其他错误: 丢弃这条响应。后续可以加重试次数/错误回调
+        // 其他错误: 丢弃这条响应(不会有完成通知)，直接结束。后续可以加重试次数/错误回调
     }
 
-    // 响应已处理(发出或按规则静默)，此时才让 0x10 的会话切换生效
-    if (uds_obj.resp.apply_ssid != 0u)
-    {
-        MicroUds_SessionSwitch(uds_obj.resp.apply_ssid);
-    }
-
-    memset(&uds_obj.resp, 0, sizeof(MicroUds_Response_t));
+    // 响应已处理(按规则静默 或 发送出错)
+    MicroUds_ResponseFinish();
 }
 
 /* ======================================================================
@@ -191,7 +262,9 @@ static void MicroUds_SecurityLock(void)
  */
 static void MicroUds_SessionSwitch(uint8_t ssid)
 {
-    if (ssid != uds_obj.session.ssid)
+    bool changed = (ssid != uds_obj.session.ssid);
+
+    if (changed)
     {
         MicroUds_SecurityLock();
     }
@@ -199,6 +272,13 @@ static void MicroUds_SessionSwitch(uint8_t ssid)
     uds_obj.session.ssid = ssid;
     uds_obj.session.is_default = (ssid == MICROUDS_SESSION_DEFAULT);
     uds_obj.session.last_tick = uds_obj.tick;
+
+#if MICROUDS_DID_ENABLE
+    if (changed)
+    {
+        MicroUds_Did_OnSessionChange(ssid); // 通知 DID 模块(回默认会话时清除动态DID)
+    }
+#endif
 }
 
 static bool MicroUds_SecurityVerify(void)
@@ -451,6 +531,8 @@ static void MicroUds_RegisterBuiltin(uint8_t sid, uint8_t flags, uint32_t sessio
     s->is_valid = true;
 }
 
+#if MICROUDS_DID_ENABLE
+// 没有子功能字节的内置服务(0x22 / 0x2E)。[REVIEW] 只给确实没有子功能字节的服务用，不要用来注册 0x10 (见 MicroUds_Init 里的说明)
 static void MicroUds_NoSubRegisterBuiltin(uint8_t sid, uint8_t flags, uint32_t session_mask, uint8_t permis,
                                      uint16_t min_len, uint16_t max_len, MicroUds_ServiceFunc_t cb)
 {
@@ -467,6 +549,7 @@ static void MicroUds_NoSubRegisterBuiltin(uint8_t sid, uint8_t flags, uint32_t s
     s->sub_func_num = 0;
     s->is_valid = true;
 }
+#endif
 
 MicroUds_Status_t MicroUds_ServiceRegisterServ(const MicroUds_ServiceTable_t *table, size_t size)
 {
@@ -490,7 +573,7 @@ MicroUds_Status_t MicroUds_ServiceRegisterServ(const MicroUds_ServiceTable_t *ta
             return MICROUDS_PARAM_ERR; // 抑制位只对有子功能的服务有意义
         }
 
-        if (MicroUds_FindService(table[i].sid) != NULL) // 与已注册的(含内置的 0x10/0x27/0x3E)重复
+        if (MicroUds_FindService(table[i].sid) != NULL) // 与已注册的(含内置的 0x10/0x27/0x3E/0x22/0x2E/0x2C)重复
         {
             return MICROUDS_PARAM_ERR;
         }
@@ -585,23 +668,32 @@ MicroUds_Status_t MicroUds_ServiceRegisterSubFunc(uint8_t sid, const MicroUds_Su
 /**
  * @brief 一个请求处理结束: 释放请求，重启S3
  * [ask] 我看这个函数老这么调用是不对的吧，应该是下次发送完成回调吗
+ * [REVIEW] 你的判断对: "请求结束"不应该在回调刚返回、响应只是排进队列的时候就发生，应该等响应真正发完。
+ *          原来(我之前的版本)在 ServiceRun 里直接调用，响应还没发完请求就被释放了，S3 也从这时开始计，是不严谨的。
+ *          但你把整个函数体注释掉、只在 HwRespTxDone 里做，会引入三个问题:
+ *            1) 被静默丢弃的响应(3E 80 抑制、功能寻址的0x31/0x11...)根本不会发送，也就永远不会有 TxDone，pdu.active 一直是 true，之后所有请求都 BUSY；
+ *            2) 0x78 也是一条响应，ISOTP 发完它也会回调 TxDone，如果这时释放请求，PENDING 的服务就被打断了；
+ *            3) 传输层发送失败时同样没有 TxDone。
+ *          所以现在的做法是: 函数体恢复，但不再由 ServiceRun 调用；只在 MicroUds_ResponseFinish 里、并且只对"最终响应"调用，
+ *          三种情况(TxDone / 被静默丢弃 / 发送失败或超时)都会走到 ResponseFinish。
+ *          唯一直接调用的地方是"功能寻址请求被服务拒绝、根本没有生成任何响应"的静默路径。
  */
 static void MicroUds_RequestDone(void)
 {
-    // uds_obj.service.pending = false;
-    // uds_obj.service.pending_cnt = 0;
-    // uds_obj.service.call_cnt = 0;
-    // uds_obj.service.cur = NULL;
-    // uds_obj.service.cur_sub = NULL;
+    uds_obj.service.pending = false;
+    uds_obj.service.pending_cnt = 0;
+    uds_obj.service.call_cnt = 0;
+    uds_obj.service.cur = NULL;
+    uds_obj.service.cur_sub = NULL;
 
-    // uds_obj.session.last_tick = uds_obj.tick; // S3 从响应处理完成起重新计时
-    // uds_obj.pdu.active = false;
+    uds_obj.session.last_tick = uds_obj.tick; // S3 从响应处理完成起重新计时
+    uds_obj.pdu.active = false;
 }
 
 static void MicroUds_Reject(uint8_t nrc)
 {
     NegativeResponse(uds_obj.pdu.sid, nrc);
-    MicroUds_RequestDone();
+    MicroUds_RespMarkFinal(); // [REVIEW] 负响应排进队列并标记为最终响应，请求在它发送完成后释放(见 MicroUds_ResponseFinish)
 }
 
 /**
@@ -610,9 +702,18 @@ static void MicroUds_Reject(uint8_t nrc)
 static void MicroUds_ServiceRun(const MicroUds_ServiceEntry_t *serv, const MicroUds_SubFunc_t *sub)
 {
     bool has_sub = (serv->flags & MICROUDS_SERV_FLAG_HAS_SUBFUNC) != 0u; // [ask] 这里都没有子功能了
+    // [REVIEW] 这里的 has_sub 不是 "有没有注册子功能表"，而是 "这个服务的请求里有没有子功能字节"，它决定两件事:
+    //          1) 正响应里要不要回显子功能字节(有 -> 偏移2，RSID+子功能；没有 -> 偏移1，只有RSID)
+    //          2) 抑制位/子功能解析(在 ServiceHandler 里已经做完)。
+    //          0x22/0x2E 确实没有子功能字节，这里 has_sub=false 是对的；0x10/0x27/0x3E/0x2C 有，必须是 true。
+    //          你把 0x10 改成 NoSubRegisterBuiltin 之后，0x10 的 has_sub 变成 false，响应里就少了子功能字节(变成 50 00 32 01 F4)。
     uint32_t off = has_sub ? 2u : 1u;
 
     MicroUds_ServiceFunc_t cb = (sub != NULL) ? sub->callback : serv->callback; // [ask] 这里为什么还在取子功能的回调函数
+    // [REVIEW] 因为用户可以给"有子功能的服务"注册子功能表，每个子功能一个回调(比如用户自己的 0x31: 01/02/03 各一个函数)，
+    //          这时 ServiceHandler 查到了子功能项(sub != NULL)，就调用子功能自己的回调。
+    //          没注册子功能表的服务(内置的 0x10/0x27/0x3E/0x2C，以及没有子功能的 0x22/0x2E)，sub 恒为 NULL，走服务级回调。
+    //          这一行是两种服务共用的统一入口，对 0x22/0x2E 来说 sub 永远是 NULL，不会真的取子功能回调。
 
     // [REVIEW] 原来 "找到子功能但 callback 为 NULL" 时既不响应也不清 active，请求会被每个周期重复处理且永远没有响应
     if (cb == NULL)
@@ -634,6 +735,7 @@ static void MicroUds_ServiceRun(const MicroUds_ServiceEntry_t *serv, const Micro
     ctx.call_cnt = uds_obj.service.call_cnt;
     ctx.Userdata = (sub != NULL) ? sub->Userdata : serv->Userdata;
     ctx.payload = &uds_obj.resp.data[off]; // [ask] 回调传递的负载, 嗯嗯这里是正确的
+    // [REVIEW] 是的。payload 直接指向响应缓冲里 RSID(+子功能)之后的位置，回调往里写，PositiveResponse 发现 payload 已经在原位就不再拷贝。
     ctx.payload_cap = MICROUDS_RESPONSE_BUF_SIZE - off;
     ctx.resp_type = MICROUDS_RESPTYPE_NEGATIVE; // 默认负响应，回调必须显式给出结果
     ctx.nrc = MICROUDS_NRC_GR;
@@ -649,9 +751,15 @@ static void MicroUds_ServiceRun(const MicroUds_ServiceEntry_t *serv, const Micro
         {
             uds_obj.resp.apply_ssid = uds_obj.session.pending_ssid; // 0x10 成功: 响应发出后切会话
             // [ask] 咋切换的? 上下文太长没看懂 你这里不是run一个服务吗，咋就切换了？响应都没从硬线发完吧此时
+            // [REVIEW] 这里并没有切换会话，只是"记个备忘"，完整过程是:
+            //   1) 0x10 的回调(MicroUds_SvcSessionControl)只做校验，把目标会话写进 session.pending_ssid (还没切)
+            //   2) 这里把 pending_ssid 抄进这条响应自己的 resp.apply_ssid，意思是"这条响应发完之后，请执行这个切换"，
+            //      然后马上清掉 session.pending_ssid，避免影响下一个请求
+            //   3) 真正的切换在 MicroUds_ResponseFinish() 里: 等 ISOTP 通知这条响应发送完成(MicroUds_HwRespTxDone)后，才调用 SessionSwitch
+            //   所以你说得对，响应没发完的时候会话是不会变的。如果响应被抑制(10 83)不发送，则在丢弃时同样走 ResponseFinish，会话照样切换。
         }
+        MicroUds_RespMarkFinal(); // [REVIEW] 不再在这里 RequestDone，改为标记最终响应，等发送完成后再释放
         uds_obj.session.pending_ssid = 0;
-        MicroUds_RequestDone();
         break;
 
     case MICROUDS_RESPTYPE_PENDING:
@@ -678,7 +786,7 @@ static void MicroUds_ServiceRun(const MicroUds_ServiceEntry_t *serv, const Micro
 
         if (send)
         {
-            NegativeResponse(serv->sid, MICROUDS_NRC_RCRRP);
+            NegativeResponse(serv->sid, MICROUDS_NRC_RCRRP); // 0x78 不标记 final: 它发送完成后请求继续存活，服务回调下个周期再被调用
             uds_obj.service.pending_tick = uds_obj.tick;
             uds_obj.service.pending_cnt++;
         }
@@ -705,6 +813,7 @@ static void MicroUds_ServiceHandler(void)
     MicroUds_Pdu_t *pdu = &uds_obj.pdu;
 
     // [REVIEW] 上一条响应还没发出去(传输层忙)时不处理新请求，响应缓冲只有一份
+    //          (响应排队 -> 提交ISOTP -> 等发送完成，整个期间 resp.active 都是 true，所以PENDING服务也不会在 0x78 还没发完时被再次调用)
     if (!pdu->active || uds_obj.resp.active)
     {
         return;
@@ -733,7 +842,7 @@ static void MicroUds_ServiceHandler(void)
 
     if (pdu->addr == MICROUDS_ADDR_FUNC && (serv->flags & MICROUDS_SERV_FLAG_FUNC_ADDR) == 0u)
     {
-        MicroUds_RequestDone(); // 该服务不接受功能寻址: 静默忽略
+        MicroUds_RequestDone(); // 该服务不接受功能寻址: 静默忽略 (没有生成响应，所以直接释放请求)
         return;
     }
 
@@ -755,6 +864,10 @@ static void MicroUds_ServiceHandler(void)
         {
             MicroUds_Reject(MICROUDS_NRC_IMLOI); // [REVIEW] 原来 len<2 一律回 GR，且对所有服务一刀切；1字节的请求只有在服务需要子功能时才是长度错误 
                                                  // [ask] 那么10 01呢? 你10 01设置了有子功能flag, 但是你却在这里往下走? 但是你不是已经就在10服务的回调中把诊断会话控制的切换动作给做了吗?
+            // [REVIEW] 这里拦的是只有 "10" 一个字节(raw_len==1)的请求，"10 01" 的 raw_len 是 2，根本不会进这个 if，所以不会被拒绝。
+            //          往下走是对的: 解析出 sub_func=0x01，再进下面的子功能查找。
+            //          "你不是已经在10服务的回调里把切换做了吗" —— 回调是在最后一步 ServiceRun 才调用的，走到这里还没进回调；
+            //          而且回调里也只是校验+记备忘(pending_ssid)，真正的切换在响应发完之后(见 ServiceRun / ResponseFinish 的说明)。
             return;
         }
 
@@ -782,11 +895,16 @@ static void MicroUds_ServiceHandler(void)
     if (has_sub && serv->sub_func_num > 0u)
     {
         sub = MicroUds_FindSubFunc(serv, pdu->sub_func); // [ask] 10 01你是不可能找到子功能的吧，你都没注册
+        // [REVIEW] 对，10 01 找不到，所以根本不会执行这一段: 外层有 `serv->sub_func_num > 0u` 的判断，
+        //          0x10 是内置服务，没注册过子功能表(sub_func_num == 0)，整个 if 被跳过，sub 保持 NULL，
+        //          请求继续往下走，由服务级回调 MicroUds_SvcSessionControl 通过 ctx->sub_func 判断是不是支持的会话。
+        //          只有"用户给某个服务注册了子功能表"时，才会在这里逐个查找，查不到才返回 0x12。
 
         if (sub == NULL)
         {
             MicroUds_Reject(MICROUDS_NRC_SFNS); // 子功能全局不支持
                                                 // [ask] 然后10 01的时候你就直接返回了负响应?
+            // [REVIEW] 不会，理由同上: 10 01 根本进不到这里。(原来的 10 03 测试用例也是正常返回 50 03 .. 的)
             return;
         }
 
@@ -829,8 +947,11 @@ MicroUds_Status_t MicroUds_Init(void)
 
     // 内核内置服务
     // 0x10: 所有会话可用，允许功能寻址，支持抑制位，请求长度固定 2 字节
-    MicroUds_NoSubRegisterBuiltin(0x10, MICROUDS_SERV_FLAG_SUPPRESS | MICROUDS_SERV_FLAG_FUNC_ADDR,
+    MicroUds_RegisterBuiltin(0x10, MICROUDS_SERV_FLAG_SUPPRESS | MICROUDS_SERV_FLAG_FUNC_ADDR,
                              uds_obj.session.mask, 0, 2, 2, MicroUds_SvcSessionControl); // [ask] 为了避免我说的 10 01 你返回负响应的事情，我这里用了我加的MicroUds_NoSubRegisterBuiltin
+    // [REVIEW] 不需要用 NoSub，而且 NoSub 会让 0x10 完全失效: NoSub 不带 HAS_SUBFUNC 标志 -> ServiceHandler 不解析子功能 -> ctx->sub_func 恒为 0
+    //          -> MicroUds_SvcSessionControl 里 target==0 -> 任何 10 xx 都返回 0x12；就算改对了，响应也少了子功能字节，抑制位(10 83)也不生效。
+    //          10 01 不会被拒绝的原因见 MicroUds_ServiceHandler 里关于 sub_func_num 的说明。已改回 MicroUds_RegisterBuiltin。
 
     // 0x27: 仅扩展/编程会话可用 (原来只在扩展会话)，不允许功能寻址，不支持抑制位，请求长度 >= 2
     // [REVIEW] 不在允许的会话里应返回 0x7F ServiceNotSupportedInActiveSession，原来返回的是 0x22
@@ -842,16 +963,31 @@ MicroUds_Status_t MicroUds_Init(void)
     MicroUds_RegisterBuiltin(0x3E, MICROUDS_SERV_FLAG_SUPPRESS | MICROUDS_SERV_FLAG_FUNC_ADDR,
                              uds_obj.session.mask, 0, 2, 2, MicroUds_SvcTesterPresent);
 
+#if MICROUDS_DID_ENABLE
+    // [REVIEW] 原来没有调用 DID 模块的初始化函数，did_obj 只有静态初始化的零值，重新 Init 时旧的DID表会残留
+    if (MicroUds_Did_Init() != MICROUDS_OK)
+    {
+        return MICROUDS_ERR;
+    }
+
+    // [REVIEW] 下面三个服务的"服务级"条件取 DID 表里最宽松的并集: 会话放开，安全不设限，真正的权限在每个DID上判断(见 MicroUds_Did.c)。
+    //          长度只限制下限；上限不在这里限(0x22 的DID个数超限要回 0x31 而不是 0x13，由回调判断)
+
     // 0x22: 读标识符 不允许功能寻址 不允许抑制
     MicroUds_NoSubRegisterBuiltin(0x22, 0 ,MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND) | MICROUDS_SET_SESSION(MICROUDS_SESSION_DEFAULT),
-                            0,MICROUDS_DID_RESP_MIN_LEN,MICROUDS_DID_RESP_MAX_LEN,MicroUds_Did_0x22ReadHandler);
+                            0,MICROUDS_DID_READ_REQ_MIN_LEN,0,MicroUds_Did_0x22ReadHandler); // [REVIEW] 原来传的是 MICROUDS_DID_RESP_MIN_LEN(2)/RESP_MAX_LEN(32)，是"请求长度"不是"响应长度"，数值也不对
     // 0x2E: 写标识 不允许功能寻址 不允许抑制
     MicroUds_NoSubRegisterBuiltin(0x2E, 0 ,MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND) | MICROUDS_SET_SESSION(MICROUDS_SESSION_DEFAULT),
-                            0,MICROUDS_DID_RESP_MIN_LEN,MICROUDS_DID_RESP_MAX_LEN,MicroUds_Did_0x22ReadHandler);
+                            0,MICROUDS_DID_WRITE_REQ_MIN_LEN,0,MicroUds_Did_0x2EWriteHandler); // [REVIEW] 原来这里挂的是 MicroUds_Did_0x22ReadHandler (复制粘贴): 写请求会被当成读请求处理
 
     // 0x2C: 动态定义标识符 
-    MicroUds_NoSubRegisterBuiltin(0x2E, 0 ,MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND) | MICROUDS_SET_SESSION(MICROUDS_SESSION_DEFAULT),
-                            0,MICROUDS_DID_RESP_MIN_LEN,MICROUDS_DID_RESP_MAX_LEN,MicroUds_Did_0x2CDynamicHandler);
+    // [REVIEW] 原来 SID 又写成了 0x2E (和上一条重复，0x2C 实际没有注册)，而且用了 NoSub。
+    //          0x2C 请求里有子功能字节(01/02/03)，应该用 RegisterBuiltin(带HAS_SUBFUNC)，抑制位也由内核处理。
+    //          会话: 动态定义建议只在扩展/编程会话开放(默认会话下不让诊断仪随便定义)，所以去掉了 DEFAULT。
+    MicroUds_RegisterBuiltin(0x2C, MICROUDS_SERV_FLAG_SUPPRESS,
+                            MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND),
+                            0,MICROUDS_DID_DYNA_REQ_MIN_LEN,0,MicroUds_Did_0x2CDynamicHandler);
+#endif
 
     return MICROUDS_OK;
 }
@@ -881,17 +1017,24 @@ void MicroUds_TimerHandler(void)
 /**
  * @brief 响应完成通知,由ISOTP响应发送完成后回调
  * [这样设计这个硬件发送完成回调是否正确 ? 由Isotp去确认发送完成的,会不会跟你写的冲突]
+ * [REVIEW] 设计是正确的，这正是之前我说的"需要 TxConfirmation"。和我原来的流程不冲突，但需要配套改两处(都已改好):
+ *   1) ResponseHandler: Transmit 返回 OK 之后不再立刻认为响应结束，而是进入"等待完成通知"(resp.tx_wait)，通知到了才释放(ResponseFinish)
+ *   2) 这个函数只置一个标志，不直接改内核状态: 它由 ISOTP 调用，可能在中断里，而 pdu/resp/service 这些状态是 TimerHandler(主循环)在用，
+ *      在中断里直接改会和主循环竞争；置标志、由 TimerHandler 统一处理最安全。
+ *   另外要注意: 发送失败时也请调用它(或者什么都不调，等 MICROUDS_TX_CONFIRM_TIMEOUT_MS 超时)，否则请求会一直等到超时才结束。
+ *   你原来写在这里的那段代码(下面注释里)现在分别在 MicroUds_RequestDone 和 MicroUds_ResponseFinish 里，并且只对"最终响应"执行。
  */
 void MicroUds_HwRespTxDone(void)
 {
-    uds_obj.service.pending = false;
-    uds_obj.service.pending_cnt = 0;
-    uds_obj.service.call_cnt = 0;
-    uds_obj.service.cur = NULL;
-    uds_obj.service.cur_sub = NULL;
+    // uds_obj.service.pending = false;
+    // uds_obj.service.pending_cnt = 0;
+    // uds_obj.service.call_cnt = 0;
+    // uds_obj.service.cur = NULL;
+    // uds_obj.service.cur_sub = NULL;
 
-    uds_obj.session.last_tick = uds_obj.tick; // S3 从响应处理完成起重新计时
-    uds_obj.pdu.active = false;
+    // uds_obj.session.last_tick = uds_obj.tick; // S3 从响应处理完成起重新计时
+    // uds_obj.pdu.active = false;
+    uds_obj.tx_done = true;
 }
 
 MicroUds_Status_t MicroUds_RxIndication(const uint8_t *data, size_t len, MicroUds_AddrType_t addrType)
@@ -948,6 +1091,7 @@ MicroUds_Status_t MicroUds_RxIndication(const uint8_t *data, size_t len, MicroUd
     //   等 0x22/0x2E 写多了，再抽一层 DID 表(DID + 读写权限 + 回调)，由 0x22 内置服务统一遍历 DID 并检查权限。
 
     // 我想应该把DID RID也写进内核,作为特殊的服务处理,独立一层接口,注册，跟通知
+    // [REVIEW] DID 已经是这样了(独立的 MicroUds_Did.c/.h，通过内置服务接入，有自己的注册接口)。RID 见文件上方的 [ask] 回答。
     return MICROUDS_OK;
 }
 

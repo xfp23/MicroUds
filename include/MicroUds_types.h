@@ -28,6 +28,9 @@ extern "C"
 #endif
 
 // 服务标志位
+// [REVIEW] HAS_SUBFUNC 的含义是 "请求的第2字节是子功能字节"，内核会据此: 解析子功能、处理抑制位、在正响应里回显子功能。
+//          它和 "有没有注册子功能表(MicroUds_ServiceRegisterSubFunc)" 是两回事:
+//          0x10/0x27/0x3E 有子功能字节(HAS_SUBFUNC)，但不需要子功能表，由服务级回调自己看 ctx->sub_func 处理。
 #define MICROUDS_SERV_FLAG_HAS_SUBFUNC 0x01u // 请求的第2字节是子功能 (0x22 这类没有子功能的服务不要设置)
 #define MICROUDS_SERV_FLAG_SUPPRESS    0x02u // 支持"抑制正响应"位(子功能bit7)，仅 HAS_SUBFUNC 的服务可设
 #define MICROUDS_SERV_FLAG_FUNC_ADDR   0x04u // 允许功能寻址，不设置则功能寻址的请求被静默忽略
@@ -146,6 +149,9 @@ typedef struct
     uint8_t Inhibit;      // 抑制响应 (只对正响应有效)
     MicroUds_AddrType_t addr; // [REVIEW] 这条响应对应的请求寻址方式。原来发送时去读 pdu.addr，新请求一来就被覆盖了，所以响应自己带一份
     uint8_t apply_ssid;   // [REVIEW] 响应发出后才生效的会话切换，0=无 (0x10 的正响应必须先发出，再切会话)
+    bool final;           // [REVIEW] 这是不是请求的"最终响应"。0x78 不是最终响应，它发送完成不能释放请求；最终响应发送完成(或被静默丢弃)后才释放请求
+    volatile bool tx_wait;// [REVIEW] 已交给传输层，正在等 MicroUds_HwRespTxDone()
+    uint32_t tx_tick;     // [REVIEW] 交给传输层的时刻，用于超时保护
     volatile bool active; // 活跃
 } MicroUds_Response_t;
 
@@ -281,6 +287,7 @@ typedef struct
     MicroUds_Service_t service;   // 诊断服务 // 子功能将以链表的形式挂载在服务里？ [REVIEW] 静态数组更适合MCU，不用链表了
     MicroUds_Security_t security; // 诊断安全
     volatile uint32_t tick;       // 整个心跳滴答
+    volatile bool tx_done;        // [REVIEW] ISOTP 发送完成通知(MicroUds_HwRespTxDone 只置这个标志，真正的处理放在 TimerHandler 里，避免在中断里改内核状态)
 } MicroUds_Obj_t;
 
 #ifdef __cplusplus

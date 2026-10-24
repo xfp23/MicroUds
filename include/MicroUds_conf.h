@@ -42,6 +42,10 @@ extern "C"
 #error "MICROUDS_PENDING_RESEND_MS must be smaller than MICROUDS_P2STAR_SERVER_MS"
 #endif
 
+// [REVIEW] 响应交给ISOTP之后，最多等多久收到 MicroUds_HwRespTxDone()。
+//          超时就认为这条响应已经结束(下层丢了完成通知)，避免请求永远卡在"等发送完成"。要大于ISOTP自己的发送超时
+#define MICROUDS_TX_CONFIRM_TIMEOUT_MS 1000u
+
 #define MICROUDS_USE_MEM 0u
 
 // [REVIEW] 响应缓冲，0x10 的正响应需要6字节，0x22读VIN需要 3+17，所以32勉强够用，给了64
@@ -67,7 +71,7 @@ extern "C"
 // 锁定后的延时(ms)，延时内请求种子返回 0x37
 #define MICROUDS_SECURITY_DELAY_MS 10000u
 
-// [REVIEW] 服务表容量，内核内置的 0x10/0x27/0x3E 占3个，所以比原来的10大一些
+// [REVIEW] 服务表容量，内核内置的 0x10/0x27/0x3E 占3个，DID模块再占 0x22/0x2E/0x2C 3个，所以比原来的10大一些
 #define MICROUDS_SERVICE_MAX_NUMBER 16u
 
 #define MICROUDS_SUBFUNC_MAX_NUMBER 3u
@@ -82,6 +86,10 @@ extern "C"
 
 #define MICROUDS_DID_WRITE_SIZE 8u
 
+// [REVIEW] 下面这两个原来被用作 0x22/0x2E 的"请求长度"上下限传给服务表，但名字叫 RESP(响应)，而且数值也不对:
+//          0x22 请求最短是 3 字节(SID+DID)，0x2E 最短是 4 字节(SID+DID+至少1字节数据)，
+//          0x2E 写一个 40 字节的DID，请求长度是 43，会被 max=32 挡成 0x13。
+//          这两个宏现在不再使用，保留只是为了不破坏你的工程，请用下面新增的 REQ 系列宏。
 #define MICROUDS_DID_RESP_MAX_LEN 32u
 
 #define MICROUDS_DID_RESP_MIN_LEN 2u
@@ -89,6 +97,33 @@ extern "C"
 #define MICROUDS_DID_DYNAMICALLY_SIZE 8u
 
 #define MICROUDS_DID_DYNAMICALLY_ITEM_LEN 5u
+
+/* ---------------- [REVIEW] 以下为 DID 模块新增配置 ---------------- */
+
+// 0x22 / 0x2E / 0x2C 的完整请求长度下限(含SID)。上限不在服务表里限制(0x22 的DID个数超限要回 0x31 而不是 0x13，由回调判断)
+#define MICROUDS_DID_READ_REQ_MIN_LEN 3u    // 22 + DID(2)
+#define MICROUDS_DID_WRITE_REQ_MIN_LEN 4u   // 2E + DID(2) + 至少1字节数据
+#define MICROUDS_DID_DYNA_REQ_MIN_LEN 2u    // 2C + 子功能(03 清除全部时只有这2字节)
+
+// 0x22 一条请求最多带几个DID，超过返回 0x31
+#define MICROUDS_DID_READ_MAX_PER_REQ 8u
+
+// 多DID请求里有DID不存在/当前会话不允许时: 0=整条回负响应(严格，多数OEM要求); 1=跳过这个DID，至少有一个可读就返回
+// (安全不满足 0x33 始终是整条拒绝，不会返回部分数据)
+#define MICROUDS_DID_READ_PARTIAL 0u
+
+// DID 在当前会话不可用时返回的NRC。你原来用的是 0x22(CNC)，常见规范是 0x31(ROOR)，所以改成宏，按你们OEM规范改
+#define MICROUDS_DID_NRC_SESSION 0x31u
+
+// 动态DID的合法范围。标准里 0xF200~0xF2FF 是周期DID(0x2A用)，0xF300~0xF3FF 才是动态定义DID；如果你们OEM约定用 F2xx，改这里
+#define MICROUDS_DID_DYNA_ID_MIN 0xF300u
+#define MICROUDS_DID_DYNA_ID_MAX 0xF3FFu
+
+// 是否允许 0x2C 02 (按内存地址定义动态DID)。允许诊断仪读内存，量产默认关闭；打开时必须实现 MicroUds_Did_AddrReadable() 白名单
+#define MICROUDS_DID_DYNA_BY_ADDR 0u
+
+// 回到默认会话时是否清除所有动态DID (多数规范: 复位或回默认会话后动态定义失效)
+#define MICROUDS_DID_DYNA_CLEAR_ON_DEFAULT 1u
 
 #ifdef __cplusplus
 }
