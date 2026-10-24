@@ -1,5 +1,5 @@
 /**
- * @file MicroUds_conf.h
+ * @file MicroUdsServer_conf.h
  * @author xfp23
  * @brief MicroUds 配置项
  * @version \ref MICROUDS_VERSION
@@ -18,12 +18,11 @@ extern "C"
 
 #define MICROUDS_VERSION "0.0.2"
 
+#define MICROUDS_SERVER_ENABLE 1u
+#define MICROUDS_CLIENT_ENABLE 0u
+
 // MICROUDS 频率 (单位: HZ) 与MicroUds_TickHandler(); 的调用频率保持一致
 #define MICROUDS_FREQ_HZ 1000u
-
-// [REVIEW] 毫秒转tick(向上取整)。所有时间配置项统一用ms书写，避免 "改了频率忘改tick数" 的坑。
-// 注意: ms * FREQ_HZ 用32位计算，ms 不要超过 4294967 (FREQ=1000时约71分钟)
-#define MICROUDS_MS_TO_TICK(ms) ((((uint32_t)(ms)) * MICROUDS_FREQ_HZ + 999u) / 1000u)
 
 // [REVIEW] 会话保持时长(S3Server)，单位ms。原来直接写tick数(5000u)，现在由ms换算，名字 MICROUDS_SESSION_HOLD_TICK 保持不变
 #define MICROUDS_SESSION_HOLD_MS 5000u

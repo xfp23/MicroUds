@@ -1,5 +1,5 @@
 /**
- * @file MicroUds_utils.h
+ * @file MicroUdsServer_utils.h
  * @author xfp23
  * @brief 
  * @version \ref MICROUDS_VERSION
@@ -36,6 +36,10 @@ extern "C"
 #define MICROUDS_TICK_ELAPSED(now, start, dur) (((uint32_t)((now) - (start))) >= (uint32_t)(dur))
 
 #define MICROUDS_SIZEOF(x) ((uint32_t)(sizeof(x) / sizeof(x[0])))
+
+// [REVIEW] 毫秒转tick(向上取整)。所有时间配置项统一用ms书写，避免 "改了频率忘改tick数" 的坑。
+// 注意: ms * FREQ_HZ 用32位计算，ms 不要超过 4294967 (FREQ=1000时约71分钟)
+#define MICROUDS_MS_TO_TICK(ms) ((((uint32_t)(ms)) * MICROUDS_FREQ_HZ + 999u) / 1000u)
 
 #ifdef __cplusplus
 }

@@ -1,5 +1,5 @@
 /**
- * @file MicroUds_Did.c
+ * @file MicroUdsServer_Did.c
  * @author Xfp23
  * @brief 先只实现 22 2E 2C也写了吧
  * @version \ref MICROUDS_VERSION
@@ -8,22 +8,22 @@
  * @copyright Copyright (c) 2026
  *
  */
-#include "MicroUds_Did.h"
-#include "MicroUds.h"
+#include "MicroUdsServer_Did.h"
+#include "MicroUdsServer.h"
 
 #if MICROUDS_DID_ENABLE
 
-static MicroUdsDid_Obj_t did_obj = {0};
+static MicroUdsServerDid_Obj_t did_obj = {0};
 
-// static MicroUds_Obj_t const *did_ptr = &did_obj; // 用指针是为了以后的内存管理做准备,预留，到时候再说吧
+// static MicroUdsServer_Obj_t const *did_ptr = &did_obj; // 用指针是为了以后的内存管理做准备,预留，到时候再说吧
 
-static MicroUdsDidItem_t *MicroUds_Did_FindReadIdentifier(uint16_t Identifier);
-static MicroUdsDidItem_t *MicroUds_Did_FindWriteIdentifier(uint16_t Identifier);
+static MicroUdsServerDidItem_t *MicroUdsServer_Did_FindReadIdentifier(uint16_t Identifier);
+static MicroUdsServerDidItem_t *MicroUdsServer_Did_FindWriteIdentifier(uint16_t Identifier);
 
 // [REVIEW] 单个响应里一个DID最多能装多少数据: 响应缓冲 - RSID(1) - DID(2)。读表项、动态DID的长度都不能超过它
 #define MICROUDS_DID_ONE_MAX_DATA (MICROUDS_RESPONSE_BUF_SIZE - 3u)
 
-static bool MicroUds_Did_SecurityPass(uint8_t security_level, uint8_t permis) // [REVIEW] 参数名 sercurity -> security
+static bool MicroUdsServer_Did_SecurityPass(uint8_t security_level, uint8_t permis) // [REVIEW] 参数名 sercurity -> security
 {
     uint8_t need = MICROUDS_PERMIS_LEVEL(permis);
 
@@ -48,7 +48,7 @@ static bool MicroUds_Did_SecurityPass(uint8_t security_level, uint8_t permis) //
  *   3. 会话不满足返回 0x22(CNC)，常见规范是 0x31(DID在当前会话不支持)，改成可配置宏 MICROUDS_DID_NRC_SESSION
  * @return 0 通过，否则为应返回的 NRC
  */
-static uint8_t MicroUds_Did_Access(const MicroUds_ServiceCtx_t *ctx, const MicroUdsDidItem_t *item)
+static uint8_t MicroUdsServer_Did_Access(const MicroUdsServer_ServiceCtx_t *ctx, const MicroUdsServerDidItem_t *item)
 {
     if (item->session != 0u && (item->session & MICROUDS_SET_SESSION(ctx->session)) == 0u)
     {
@@ -56,7 +56,7 @@ static uint8_t MicroUds_Did_Access(const MicroUds_ServiceCtx_t *ctx, const Micro
         return (uint8_t)MICROUDS_NRC_ROOR;
     }
 
-    if (!MicroUds_Did_SecurityPass(ctx->sec_level, item->permis))
+    if (!MicroUdsServer_Did_SecurityPass(ctx->sec_level, item->permis))
     {
         return (uint8_t)MICROUDS_NRC_SAD;
     }
@@ -64,9 +64,9 @@ static uint8_t MicroUds_Did_Access(const MicroUds_ServiceCtx_t *ctx, const Micro
     return 0u;
 }
 
-MicroUds_Status_t MicroUds_Did_Init(void)
+MicroUdsServer_Status_t MicroUdsServer_Did_Init(void)
 {
-    memset(&did_obj, 0, sizeof(MicroUdsDid_Obj_t));
+    memset(&did_obj, 0, sizeof(MicroUdsServerDid_Obj_t));
 
     return MICROUDS_OK;
 }
@@ -80,8 +80,8 @@ MicroUds_Status_t MicroUds_Did_Init(void)
  *   你的注释是"只能注册一个表，不允许附加"。我改成了"可以多次注册，追加在后面"，原因: 不同的业务模块(应用、标定、刷写)
  *   各自注册自己的DID，比让某一个模块把所有DID集中到一张表里更好维护；如果你就是想限制成一次，把 *num != 0 时直接返回 ERR 即可。
  */
-static MicroUds_Status_t MicroUds_Did_RegisterItems(MicroUdsDidItem_t *dst, uint16_t *num, uint16_t max,
-                                                    const MicroUdsDidItem_Config_t *table, size_t size, bool is_write)
+static MicroUdsServer_Status_t MicroUdsServer_Did_RegisterItems(MicroUdsServerDidItem_t *dst, uint16_t *num, uint16_t max,
+                                                    const MicroUdsServerDidItem_Config_t *table, size_t size, bool is_write)
 {
     if (table == NULL || size == 0u || size > max || ((size_t)*num + size) > max)
     {
@@ -132,7 +132,7 @@ static MicroUds_Status_t MicroUds_Did_RegisterItems(MicroUdsDidItem_t *dst, uint
 
     for (size_t i = 0; i < size; i++)
     {
-        MicroUdsDidItem_t *item = &dst[*num];
+        MicroUdsServerDidItem_t *item = &dst[*num];
         item->cb = table[i].cb;
         item->data = table[i].data;
         item->data_len = table[i].data_len;
@@ -148,18 +148,18 @@ static MicroUds_Status_t MicroUds_Did_RegisterItems(MicroUdsDidItem_t *dst, uint
     return MICROUDS_OK;
 }
 
-// 只能注册一个表，不允许附加  [REVIEW] 见 MicroUds_Did_RegisterItems 上面的说明，现在可以追加
-MicroUds_Status_t MicroUds_Did_RegisterReadItem(const MicroUdsDidItem_Config_t *table, size_t size)
+// 只能注册一个表，不允许附加  [REVIEW] 见 MicroUdsServer_Did_RegisterItems 上面的说明，现在可以追加
+MicroUdsServer_Status_t MicroUdsServer_Did_RegisterReadItem(const MicroUdsServerDidItem_Config_t *table, size_t size)
 {
-    return MicroUds_Did_RegisterItems(did_obj.Read, &did_obj.read_num, MICROUDS_DID_READ_SIZE, table, size, false);
+    return MicroUdsServer_Did_RegisterItems(did_obj.Read, &did_obj.read_num, MICROUDS_DID_READ_SIZE, table, size, false);
 }
 
-MicroUds_Status_t MicroUds_Did_RegisterWriteItem(const MicroUdsDidItem_Config_t *table, size_t size)
+MicroUdsServer_Status_t MicroUdsServer_Did_RegisterWriteItem(const MicroUdsServerDidItem_Config_t *table, size_t size)
 {
-    return MicroUds_Did_RegisterItems(did_obj.Write, &did_obj.write_num, MICROUDS_DID_WRITE_SIZE, table, size, true);
+    return MicroUdsServer_Did_RegisterItems(did_obj.Write, &did_obj.write_num, MICROUDS_DID_WRITE_SIZE, table, size, true);
 }
 
-static MicroUdsDidItem_t *MicroUds_Did_FindReadIdentifier(uint16_t Identifier)
+static MicroUdsServerDidItem_t *MicroUdsServer_Did_FindReadIdentifier(uint16_t Identifier)
 {
     for (uint16_t i = 0; i < did_obj.read_num; i++)
     {
@@ -176,7 +176,7 @@ static MicroUdsDidItem_t *MicroUds_Did_FindReadIdentifier(uint16_t Identifier)
     return NULL;
 }
 
-static MicroUdsDidItem_t *MicroUds_Did_FindWriteIdentifier(uint16_t Identifier)
+static MicroUdsServerDidItem_t *MicroUdsServer_Did_FindWriteIdentifier(uint16_t Identifier)
 {
     for (uint16_t i = 0; i < did_obj.write_num; i++)
     {
@@ -193,7 +193,7 @@ static MicroUdsDidItem_t *MicroUds_Did_FindWriteIdentifier(uint16_t Identifier)
     return NULL;
 }
 
-MicroUdsDid_Dynamically_t *MicroUds_Did_FindDynamic(uint16_t id)
+MicroUdsServerDid_Dynamically_t *MicroUdsServer_Did_FindDynamic(uint16_t id)
 {
     for (uint16_t i = 0; i < MICROUDS_DID_DYNAMICALLY_SIZE; i++)
     {
@@ -210,14 +210,14 @@ MicroUdsDid_Dynamically_t *MicroUds_Did_FindDynamic(uint16_t id)
  * @brief 读之前的刷新: 调用用户 cb，让用户把最新数据放进 item->data
  * @return 0 成功，否则 NRC
  */
-static uint8_t MicroUds_Did_Refresh(const MicroUds_ServiceCtx_t *ctx, const MicroUdsDidItem_t *item, uint16_t did_cnt)
+static uint8_t MicroUdsServer_Did_Refresh(const MicroUdsServer_ServiceCtx_t *ctx, const MicroUdsServerDidItem_t *item, uint16_t did_cnt)
 {
     if (item->cb == NULL)
     {
         return 0u;
     }
 
-    MicroUdsDid_Ctx_t didctx = {0};
+    MicroUdsServerDid_Ctx_t didctx = {0};
 
     didctx.Did = item->Identifier;
     didctx.Did_len = did_cnt;
@@ -247,22 +247,22 @@ static uint8_t MicroUds_Did_Refresh(const MicroUds_ServiceCtx_t *ctx, const Micr
  * @brief 动态DID读取前检查: 每个来源都要通过自己的会话/安全检查
  * [REVIEW] 原来读动态DID时完全没有权限检查。动态DID只是"换了个名字读同样的数据"，不能借它绕过源DID的会话/安全限制。
  */
-static uint8_t MicroUds_Did_DynaCheck(const MicroUds_ServiceCtx_t *ctx, const MicroUdsDid_Dynamically_t *dyn)
+static uint8_t MicroUdsServer_Did_DynaCheck(const MicroUdsServer_ServiceCtx_t *ctx, const MicroUdsServerDid_Dynamically_t *dyn)
 {
     for (uint16_t i = 0; i < dyn->item_num; i++)
     {
-        const MicroUdsDid_DynaItem_t *it = &dyn->Item[i];
+        const MicroUdsServerDid_DynaItem_t *it = &dyn->Item[i];
 
         if (dyn->type == MICROUDSDID_DYNA_ID)
         {
-            const MicroUdsDidItem_t *src = MicroUds_Did_FindReadIdentifier(it->src_did);
+            const MicroUdsServerDidItem_t *src = MicroUdsServer_Did_FindReadIdentifier(it->src_did);
 
             if (src == NULL)
             {
                 return (uint8_t)MICROUDS_NRC_ROOR;
             }
 
-            uint8_t nrc = MicroUds_Did_Access(ctx, src);
+            uint8_t nrc = MicroUdsServer_Did_Access(ctx, src);
 
             if (nrc != 0u)
             {
@@ -272,7 +272,7 @@ static uint8_t MicroUds_Did_DynaCheck(const MicroUds_ServiceCtx_t *ctx, const Mi
         else
         {
 #if MICROUDS_DID_DYNA_BY_ADDR
-            if (!MicroUds_Did_AddrReadable(it->addr, it->size))
+            if (!MicroUdsServer_Did_AddrReadable(it->addr, it->size))
             {
                 return (uint8_t)MICROUDS_NRC_ROOR;
             }
@@ -289,23 +289,23 @@ static uint8_t MicroUds_Did_DynaCheck(const MicroUds_ServiceCtx_t *ctx, const Mi
  * @brief 把动态DID的数据按顺序读进 out
  * @return 0 成功，否则 NRC
  */
-static uint8_t MicroUds_Did_DynaRead(const MicroUds_ServiceCtx_t *ctx, const MicroUdsDid_Dynamically_t *dyn,
+static uint8_t MicroUdsServer_Did_DynaRead(const MicroUdsServer_ServiceCtx_t *ctx, const MicroUdsServerDid_Dynamically_t *dyn,
                                      uint8_t *out, uint16_t did_cnt)
 {
     for (uint16_t i = 0; i < dyn->item_num; i++)
     {
-        const MicroUdsDid_DynaItem_t *it = &dyn->Item[i];
+        const MicroUdsServerDid_DynaItem_t *it = &dyn->Item[i];
 
         if (dyn->type == MICROUDSDID_DYNA_ID)
         {
-            const MicroUdsDidItem_t *src = MicroUds_Did_FindReadIdentifier(it->src_did);
+            const MicroUdsServerDidItem_t *src = MicroUdsServer_Did_FindReadIdentifier(it->src_did);
 
             if (src == NULL)
             {
                 return (uint8_t)MICROUDS_NRC_ROOR;
             }
 
-            uint8_t nrc = MicroUds_Did_Refresh(ctx, src, did_cnt); // 先让用户刷新源数据
+            uint8_t nrc = MicroUdsServer_Did_Refresh(ctx, src, did_cnt); // 先让用户刷新源数据
 
             if (nrc != 0u)
             {
@@ -339,7 +339,7 @@ static uint8_t MicroUds_Did_DynaRead(const MicroUds_ServiceCtx_t *ctx, const Mic
 //   6. 边读边写响应: 第2个DID不存在时，第1个的数据已经读出来(可能有副作用)，却要整条回负响应
 //   7. `(uint16_t)(did_size * 0.5f)` 用了浮点，MCU上没必要，直接 /2
 //   现在分两阶段: 阶段1 校验全部DID(存在/会话/安全/总长度，不读数据)；阶段2 才读取并拼响应
-void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx)
+void MicroUdsServer_Did_0x22ReadHandler(MicroUdsServer_ServiceCtx_t *ctx)
 {
     // 请求长度 + 1 就算是did长度了吧
     // [REVIEW] 不需要 +1。0x22 注册成"没有子功能的服务"，ctx->req 从 SID 后面第一个字节开始，ctx->req_len 就是 DID 列表的字节数(2*N)
@@ -348,7 +348,7 @@ void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx)
 
     if (did_size == 0u || (did_size % 2u) != 0u)
     {
-        MicroUds_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
+        MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
         return; // 返回负响应
     }
 
@@ -356,14 +356,14 @@ void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx)
 
     if (did_len > MICROUDS_DID_READ_MAX_PER_REQ)
     {
-        MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 一条请求带的DID太多
+        MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 一条请求带的DID太多
         return;
     }
 
     // 先找一下动态did，再去翻静态did
     // [REVIEW] 每个DID独立判断是动态还是静态，不再整条请求二选一
-    const MicroUdsDidItem_t *static_sel[MICROUDS_DID_READ_MAX_PER_REQ] = {0};
-    const MicroUdsDid_Dynamically_t *dyna_sel[MICROUDS_DID_READ_MAX_PER_REQ] = {0};
+    const MicroUdsServerDidItem_t *static_sel[MICROUDS_DID_READ_MAX_PER_REQ] = {0};
+    const MicroUdsServerDid_Dynamically_t *dyna_sel[MICROUDS_DID_READ_MAX_PER_REQ] = {0};
     uint16_t dids[MICROUDS_DID_READ_MAX_PER_REQ] = {0};
     uint32_t total_len = 0;
     uint16_t found = 0;
@@ -376,15 +376,15 @@ void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx)
 
         dids[i] = did;
 
-        const MicroUdsDid_Dynamically_t *dyna_item = MicroUds_Did_FindDynamic(did);
+        const MicroUdsServerDid_Dynamically_t *dyna_item = MicroUdsServer_Did_FindDynamic(did);
 
         if (dyna_item != NULL)
         {
             // 动态DID
-            nrc = MicroUds_Did_DynaCheck(ctx, dyna_item);
+            nrc = MicroUdsServer_Did_DynaCheck(ctx, dyna_item);
             if (nrc != 0u)
             {
-                MicroUds_CtxNegative(ctx, nrc);
+                MicroUdsServer_CtxNegative(ctx, nrc);
                 return;
             }
             dyna_sel[i] = dyna_item;
@@ -393,19 +393,19 @@ void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx)
             continue;
         }
 
-        const MicroUdsDidItem_t *did_item = MicroUds_Did_FindReadIdentifier(did);
+        const MicroUdsServerDidItem_t *did_item = MicroUdsServer_Did_FindReadIdentifier(did);
 
         if (did_item == NULL)
         {
 #if MICROUDS_DID_READ_PARTIAL
             continue; // 宽松策略: 跳过不存在的DID
 #else
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR);
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR);
             return;
 #endif
         }
 
-        nrc = MicroUds_Did_Access(ctx, did_item);
+        nrc = MicroUdsServer_Did_Access(ctx, did_item);
         if (nrc != 0u)
         {
 #if MICROUDS_DID_READ_PARTIAL
@@ -414,7 +414,7 @@ void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx)
                 continue; // 当前会话不支持这个DID，跳过 (安全不满足仍然整条拒绝)
             }
 #endif
-            MicroUds_CtxNegative(ctx, nrc);
+            MicroUdsServer_CtxNegative(ctx, nrc);
             return;
         }
 
@@ -425,13 +425,13 @@ void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx)
 
     if (found == 0u)
     {
-        MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 全部不支持
+        MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 全部不支持
         return;
     }
 
     if (total_len > ctx->payload_cap) // [REVIEW] 原来是 "payload_cap < 单个DID长度"，多个DID累计超限检查不到
     {
-        MicroUds_CtxNegative(ctx, MICROUDS_NRC_RTL);
+        MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_RTL);
         return;
     }
 
@@ -444,13 +444,13 @@ void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx)
 
         if (static_sel[i] != NULL)
         {
-            const MicroUdsDidItem_t *did_item = static_sel[i];
+            const MicroUdsServerDidItem_t *did_item = static_sel[i];
 
-            nrc = MicroUds_Did_Refresh(ctx, did_item, did_len);
+            nrc = MicroUdsServer_Did_Refresh(ctx, did_item, did_len);
             if (nrc != 0u)
             {
-                MicroUds_CtxNegative(ctx, nrc);
-                return; // 可能是pedding啥的吧 [REVIEW] 读不支持pending，见 MicroUds_Did_Refresh
+                MicroUdsServer_CtxNegative(ctx, nrc);
+                return; // 可能是pedding啥的吧 [REVIEW] 读不支持pending，见 MicroUdsServer_Did_Refresh
             }
 
             p[0] = (uint8_t)(did_item->Identifier >> 8); // 响应里要回显DID
@@ -460,22 +460,22 @@ void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx)
         }
         else if (dyna_sel[i] != NULL)
         {
-            const MicroUdsDid_Dynamically_t *dyna_item = dyna_sel[i];
+            const MicroUdsServerDid_Dynamically_t *dyna_item = dyna_sel[i];
 
             p[0] = (uint8_t)(dids[i] >> 8);
             p[1] = (uint8_t)(dids[i] & 0xFFu);
 
-            nrc = MicroUds_Did_DynaRead(ctx, dyna_item, &p[2], did_len);
+            nrc = MicroUdsServer_Did_DynaRead(ctx, dyna_item, &p[2], did_len);
             if (nrc != 0u)
             {
-                MicroUds_CtxNegative(ctx, nrc);
+                MicroUdsServer_CtxNegative(ctx, nrc);
                 return;
             }
             p += 2u + dyna_item->data_len;
         }
     }
 
-    MicroUds_CtxPositive(ctx, (uint32_t)(p - ctx->payload));
+    MicroUdsServer_CtxPositive(ctx, (uint32_t)(p - ctx->payload));
 }
 
 // [REVIEW] 原来的 2E 实现有这些问题:
@@ -486,11 +486,11 @@ void MicroUds_Did_0x22ReadHandler(MicroUds_ServiceCtx_t *ctx)
 //   4. 没有做会话/安全检查
 //   5. `Item->cb` 没判空
 //   6. 正响应应该回显DID(6E DIDH DIDL)，原来只给了长度，payload没写
-void MicroUds_Did_0x2EWriteHandler(MicroUds_ServiceCtx_t *ctx)
+void MicroUdsServer_Did_0x2EWriteHandler(MicroUdsServer_ServiceCtx_t *ctx)
 {
     if (ctx->req_len < 3u) // DID(2) + 至少1字节数据
     {
-        MicroUds_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
+        MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
         return;
     }
 
@@ -498,23 +498,23 @@ void MicroUds_Did_0x2EWriteHandler(MicroUds_ServiceCtx_t *ctx)
     const uint8_t *in = &ctx->req[2];
     uint16_t in_len = (uint16_t)(ctx->req_len - 2u);
 
-    MicroUdsDidItem_t *Item = MicroUds_Did_FindWriteIdentifier(did);
+    MicroUdsServerDidItem_t *Item = MicroUdsServer_Did_FindWriteIdentifier(did);
 
     // 动态DID不在写表里，所以自然查不到 -> 0x31，满足"动态DID不能用 0x2E 写"
     if (Item == NULL)
     {
-        MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR);
+        MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR);
         return;
     }
 
     // 校验只在首次调用时做; pending 之后的重入不再重复校验(权限/长度没变，只是继续等用户cb完成)
     if (ctx->call_cnt == 0u)
     {
-        uint8_t nrc = MicroUds_Did_Access(ctx, Item);
+        uint8_t nrc = MicroUdsServer_Did_Access(ctx, Item);
 
         if (nrc != 0u)
         {
-            MicroUds_CtxNegative(ctx, nrc);
+            MicroUdsServer_CtxNegative(ctx, nrc);
             return;
         }
 
@@ -525,7 +525,7 @@ void MicroUds_Did_0x2EWriteHandler(MicroUds_ServiceCtx_t *ctx)
         // [REVIEW] 是，用 0x13。固定长度的DID，写入长度必须严格等于定义长度(多了少了都是 0x13)
         if (in_len != Item->data_len)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
             return;
         }
     }
@@ -533,7 +533,7 @@ void MicroUds_Did_0x2EWriteHandler(MicroUds_ServiceCtx_t *ctx)
     // 校验通过，先让用户的cb做"数据层校验+提交"，接受(nrc==0)之后内核才替用户把数据拷进 data
     if (Item->cb != NULL)
     {
-        MicroUdsDid_Ctx_t didctx = {0};
+        MicroUdsServerDid_Ctx_t didctx = {0};
         didctx.Did = Item->Identifier;
         didctx.Did_len = 1;
         didctx.Userdata = Item->Userdata;
@@ -549,13 +549,13 @@ void MicroUds_Did_0x2EWriteHandler(MicroUds_ServiceCtx_t *ctx)
 
         if (didctx.nrc != 0)
         {
-            MicroUds_CtxNegative(ctx, didctx.nrc);
+            MicroUdsServer_CtxNegative(ctx, didctx.nrc);
             return;
         }
 
         if (didctx.pending)
         {
-            MicroUds_CtxPending(ctx); // 还没写完: 内核回 0x78，下个周期再次进来(call_cnt>0)
+            MicroUdsServer_CtxPending(ctx); // 还没写完: 内核回 0x78，下个周期再次进来(call_cnt>0)
             return;
         }
     }
@@ -567,7 +567,7 @@ void MicroUds_Did_0x2EWriteHandler(MicroUds_ServiceCtx_t *ctx)
 
     ctx->payload[0] = (uint8_t)(did >> 8); // 6E DIDH DIDL
     ctx->payload[1] = (uint8_t)(did & 0xFFu);
-    MicroUds_CtxPositive(ctx, 2u);
+    MicroUdsServer_CtxPositive(ctx, 2u);
 }
 
 /* ======================================================================
@@ -575,20 +575,20 @@ void MicroUds_Did_0x2EWriteHandler(MicroUds_ServiceCtx_t *ctx)
  * ====================================================================== */
 
 /** 动态DID号是否合法: 在动态区间内，并且没有和静态DID重名 */
-static bool MicroUds_Did_DynaIdValid(uint16_t did)
+static bool MicroUdsServer_Did_DynaIdValid(uint16_t did)
 {
     if (did < MICROUDS_DID_DYNA_ID_MIN || did > MICROUDS_DID_DYNA_ID_MAX)
     {
         return false;
     }
 
-    return (MicroUds_Did_FindReadIdentifier(did) == NULL) && (MicroUds_Did_FindWriteIdentifier(did) == NULL);
+    return (MicroUdsServer_Did_FindReadIdentifier(did) == NULL) && (MicroUdsServer_Did_FindWriteIdentifier(did) == NULL);
 }
 
 /** 取一个槽位: 已存在就复用(覆盖重新定义)，否则找空闲槽 */
-static MicroUdsDid_Dynamically_t *MicroUds_Did_DynaAlloc(uint16_t did)
+static MicroUdsServerDid_Dynamically_t *MicroUdsServer_Did_DynaAlloc(uint16_t did)
 {
-    MicroUdsDid_Dynamically_t *slot = MicroUds_Did_FindDynamic(did);
+    MicroUdsServerDid_Dynamically_t *slot = MicroUdsServer_Did_FindDynamic(did);
 
     if (slot != NULL)
     {
@@ -608,23 +608,23 @@ static MicroUdsDid_Dynamically_t *MicroUds_Did_DynaAlloc(uint16_t did)
     return NULL;
 }
 
-static void MicroUds_Did_DynaClear(MicroUdsDid_Dynamically_t *slot)
+static void MicroUdsServer_Did_DynaClear(MicroUdsServerDid_Dynamically_t *slot)
 {
     if (slot->is_active && did_obj.dync_num > 0u)
     {
         did_obj.dync_num--;
     }
-    memset(slot, 0, sizeof(MicroUdsDid_Dynamically_t));
+    memset(slot, 0, sizeof(MicroUdsServerDid_Dynamically_t));
 }
 
-void MicroUds_Did_OnSessionChange(uint8_t new_ssid)
+void MicroUdsServer_Did_OnSessionChange(uint8_t new_ssid)
 {
 #if MICROUDS_DID_DYNA_CLEAR_ON_DEFAULT
     if (new_ssid == MICROUDS_SESSION_DEFAULT)
     {
         for (uint16_t i = 0; i < MICROUDS_DID_DYNAMICALLY_SIZE; i++)
         {
-            MicroUds_Did_DynaClear(&did_obj.Dynamically[i]);
+            MicroUdsServer_Did_DynaClear(&did_obj.Dynamically[i]);
         }
     }
 #else
@@ -638,7 +638,7 @@ void MicroUds_Did_OnSessionChange(uint8_t new_ssid)
 //   `switch (ctx->sub_func)` 取的又是内核没填的0，结果是任何0x2C请求都不会走到任何case，也不会有响应。
 //   让内核解析子功能还有三个好处: 抑制位(2C 81 ...)自动处理、正响应自动回显子功能(6C 01 ...)、会话/长度检查走统一流水线。
 //   现在 ctx->sub_func = 01/02/03，ctx->req 从 DDDID 开始。
-void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
+void MicroUdsServer_Did_0x2CDynamicHandler(MicroUdsServer_ServiceCtx_t *ctx)
 {
     switch (ctx->sub_func)
     {
@@ -650,21 +650,21 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
     {
         if (ctx->req_len < 6u || ((ctx->req_len - 2u) % 4u) != 0u) // DDDID(2) + 至少一个片段(4)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
             return;
         }
 
         uint16_t dync_did = (uint16_t)(((uint16_t)ctx->req[0] << 8) | ctx->req[1]);
         uint16_t did_num = (uint16_t)((ctx->req_len - 2u) / 4u);
 
-        if (!MicroUds_Did_DynaIdValid(dync_did) || did_num > MICROUDS_DID_DYNAMICALLY_ITEM_LEN)
+        if (!MicroUdsServer_Did_DynaIdValid(dync_did) || did_num > MICROUDS_DID_DYNAMICALLY_ITEM_LEN)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 不在动态区间/和静态DID冲突/片段太多
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 不在动态区间/和静态DID冲突/片段太多
             return;
         }
 
         // [REVIEW] 先全部校验、结果放进临时变量，通过后才提交到槽位。原来是边解析边写槽位，中途失败槽位里留着半个定义
-        MicroUdsDid_DynaItem_t tmp[MICROUDS_DID_DYNAMICALLY_ITEM_LEN];
+        MicroUdsServerDid_DynaItem_t tmp[MICROUDS_DID_DYNAMICALLY_ITEM_LEN];
         uint32_t total = 0;
 
         for (uint16_t i = 0; i < did_num; i++)
@@ -675,25 +675,25 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
             uint16_t pos = seg[2];
             uint16_t size = seg[3];
 
-            const MicroUdsDidItem_t *static_item = MicroUds_Did_FindReadIdentifier(src_did);
+            const MicroUdsServerDidItem_t *static_item = MicroUdsServer_Did_FindReadIdentifier(src_did);
 
             if (static_item == NULL)
             {
-                MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 源DID不存在
+                MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 源DID不存在
                 return;
             }
 
-            uint8_t nrc = MicroUds_Did_Access(ctx, static_item); // 定义时就确认你有权读这个源DID
+            uint8_t nrc = MicroUdsServer_Did_Access(ctx, static_item); // 定义时就确认你有权读这个源DID
             if (nrc != 0u)
             {
-                MicroUds_CtxNegative(ctx, nrc);
+                MicroUdsServer_CtxNegative(ctx, nrc);
                 return;
             }
 
             // 位置从1开始，片段不能超出源数据记录
             if (pos < 1u || size < 1u || (uint32_t)(pos - 1u) + size > static_item->data_len)
             {
-                MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR);
+                MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR);
                 return;
             }
 
@@ -706,20 +706,20 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
 
         if (total > MICROUDS_DID_ONE_MAX_DATA)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 读取时响应装不下
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 读取时响应装不下
             return;
         }
 
-        MicroUdsDid_Dynamically_t *dyna_itme = MicroUds_Did_DynaAlloc(dync_did);
+        MicroUdsServerDid_Dynamically_t *dyna_itme = MicroUdsServer_Did_DynaAlloc(dync_did);
 
         if (dyna_itme == NULL)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 动态DID槽位满了
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR); // 动态DID槽位满了
             return;
         }
 
-        memset(dyna_itme, 0, sizeof(MicroUdsDid_Dynamically_t));
-        memcpy(dyna_itme->Item, tmp, sizeof(MicroUdsDid_DynaItem_t) * did_num);
+        memset(dyna_itme, 0, sizeof(MicroUdsServerDid_Dynamically_t));
+        memcpy(dyna_itme->Item, tmp, sizeof(MicroUdsServerDid_DynaItem_t) * did_num);
         dyna_itme->dync_did = dync_did;
         dyna_itme->type = MICROUDSDID_DYNA_ID;
         dyna_itme->item_num = did_num;
@@ -730,7 +730,7 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
         //          正确做法是把DID的两个字节写进响应。子功能(01)由内核自动回显，所以响应是 6C 01 DDDID
         ctx->payload[0] = (uint8_t)(dync_did >> 8);
         ctx->payload[1] = (uint8_t)(dync_did & 0xFFu);
-        MicroUds_CtxPositive(ctx, 2); // 返回正响应
+        MicroUdsServer_CtxPositive(ctx, 2); // 返回正响应
     }
     break;
 
@@ -745,7 +745,7 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
         //          实际算的是 ((req[3]&0x0F) + req[3]) >> 4。而且 ALFID 在这个布局里是 req[2](DDDID 之后)，不是 req[3]。
         if (ctx->req_len < 3u)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
             return;
         }
 
@@ -754,9 +754,9 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
         uint8_t addr_bytes = (uint8_t)(alfid & 0x0Fu);
         uint8_t size_bytes = (uint8_t)(alfid >> 4);
 
-        if (!MicroUds_Did_DynaIdValid(dync_did) || addr_bytes != 4u || size_bytes < 1u || size_bytes > 2u)
+        if (!MicroUdsServer_Did_DynaIdValid(dync_did) || addr_bytes != 4u || size_bytes < 1u || size_bytes > 2u)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR);
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR);
             return;
         }
 
@@ -765,7 +765,7 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
 
         if (body == 0u || (body % stride) != 0u)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
             return;
         }
 
@@ -773,11 +773,11 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
 
         if (addr_num > MICROUDS_DID_DYNAMICALLY_ITEM_LEN)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR);
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR);
             return;
         }
 
-        MicroUdsDid_DynaItem_t tmp[MICROUDS_DID_DYNAMICALLY_ITEM_LEN];
+        MicroUdsServerDid_DynaItem_t tmp[MICROUDS_DID_DYNAMICALLY_ITEM_LEN];
         uint32_t total = 0;
 
         for (uint32_t i = 0; i < addr_num; i++)
@@ -792,10 +792,10 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
             }
 
             // [REVIEW] 原来只检查 addr==0。诊断仪可以读任意地址等于把整个内存(包括密钥)暴露出去。
-            //          必须由用户实现白名单 MicroUds_Did_AddrReadable()，并检查 addr+len 溢出
-            if (len == 0u || (addr + len) < addr || !MicroUds_Did_AddrReadable(addr, len))
+            //          必须由用户实现白名单 MicroUdsServer_Did_AddrReadable()，并检查 addr+len 溢出
+            if (len == 0u || (addr + len) < addr || !MicroUdsServer_Did_AddrReadable(addr, len))
             {
-                MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR);
+                MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR);
                 return;
             }
 
@@ -808,20 +808,20 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
 
         if (total > MICROUDS_DID_ONE_MAX_DATA)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR);
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR);
             return;
         }
 
-        MicroUdsDid_Dynamically_t *dyna_itme = MicroUds_Did_DynaAlloc(dync_did);
+        MicroUdsServerDid_Dynamically_t *dyna_itme = MicroUdsServer_Did_DynaAlloc(dync_did);
 
         if (dyna_itme == NULL)
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR);
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR);
             return;
         }
 
-        memset(dyna_itme, 0, sizeof(MicroUdsDid_Dynamically_t));
-        memcpy(dyna_itme->Item, tmp, sizeof(MicroUdsDid_DynaItem_t) * addr_num);
+        memset(dyna_itme, 0, sizeof(MicroUdsServerDid_Dynamically_t));
+        memcpy(dyna_itme->Item, tmp, sizeof(MicroUdsServerDid_DynaItem_t) * addr_num);
         dyna_itme->dync_did = dync_did;
         dyna_itme->type = MICROUDSDID_DYNA_ADDRESS;
         dyna_itme->item_num = (uint16_t)addr_num;
@@ -830,11 +830,11 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
 
         ctx->payload[0] = (uint8_t)(dync_did >> 8);
         ctx->payload[1] = (uint8_t)(dync_did & 0xFFu);
-        MicroUds_CtxPositive(ctx, 2); // 返回正响应
+        MicroUdsServer_CtxPositive(ctx, 2); // 返回正响应
         // dyna_itme.
 #else
         // 量产默认关闭按地址定义，子功能不支持
-        MicroUds_CtxNegative(ctx, MICROUDS_NRC_SFNS);
+        MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_SFNS);
 #endif
     }
     break;
@@ -846,35 +846,35 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
         {
             for (uint16_t i = 0; i < MICROUDS_DID_DYNAMICALLY_SIZE; i++)
             {
-                MicroUds_Did_DynaClear(&did_obj.Dynamically[i]);
+                MicroUdsServer_Did_DynaClear(&did_obj.Dynamically[i]);
             }
-            MicroUds_CtxPositive(ctx, 0u);
+            MicroUdsServer_CtxPositive(ctx, 0u);
         }
         else if (ctx->req_len == 2u)
         {
             uint16_t dync_did = (uint16_t)(((uint16_t)ctx->req[0] << 8) | ctx->req[1]);
-            MicroUdsDid_Dynamically_t *slot = MicroUds_Did_FindDynamic(dync_did);
+            MicroUdsServerDid_Dynamically_t *slot = MicroUdsServer_Did_FindDynamic(dync_did);
 
             if (slot == NULL)
             {
-                MicroUds_CtxNegative(ctx, MICROUDS_NRC_ROOR);
+                MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ROOR);
                 return;
             }
 
-            MicroUds_Did_DynaClear(slot);
+            MicroUdsServer_Did_DynaClear(slot);
             ctx->payload[0] = (uint8_t)(dync_did >> 8);
             ctx->payload[1] = (uint8_t)(dync_did & 0xFFu);
-            MicroUds_CtxPositive(ctx, 2u);
+            MicroUdsServer_CtxPositive(ctx, 2u);
         }
         else
         {
-            MicroUds_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
+            MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
         }
     }
     break;
 
     default:
-        MicroUds_CtxNegative(ctx, MICROUDS_NRC_SFNS); // 子功能不支持
+        MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_SFNS); // 子功能不支持
         break;
     }
 }
@@ -882,7 +882,7 @@ void MicroUds_Did_0x2CDynamicHandler(MicroUds_ServiceCtx_t *ctx)
 /**
  * @brief 弱函数，用户重写: 默认全部拒绝
  */
-bool __attribute__((weak)) MicroUds_Did_AddrReadable(uint32_t addr, uint32_t len)
+bool __attribute__((weak)) MicroUdsServer_Did_AddrReadable(uint32_t addr, uint32_t len)
 {
     (void)addr;
     (void)len;

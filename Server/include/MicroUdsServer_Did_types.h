@@ -1,5 +1,5 @@
 /**
- * @file MicroUds_Did_types.h
+ * @file MicroUdsServer_Did_types.h
  * @author xfp23
  * @brief 
  * @version 0.1
@@ -11,7 +11,7 @@
 #ifndef MICROUDS_DID_TYPES_H
 #define MICROUDS_DID_TYPES_H
 
-#include "MicroUds_types.h"
+#include "MicroUdsServer_types.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -21,7 +21,7 @@ extern "C"
 typedef enum {
     MICROUDSDID_DYNA_ID,
     MICROUDSDID_DYNA_ADDRESS,
-} MicroUdsDid_DynaType_t;
+} MicroUdsServerDid_DynaType_t;
 
 /**
  * @brief DID 回调的上下文
@@ -52,9 +52,9 @@ typedef struct
     uint8_t nrc; // 用户输出
     bool pending; // [REVIEW] 写请求专用: 置true表示"还没写完"(例如要等NVM)，内核回 0x78 并在后续周期再次调用 cb。读请求不支持pending(会按 GR 处理)
 
-} MicroUdsDid_Ctx_t;
+} MicroUdsServerDid_Ctx_t;
 
-typedef void (*MicroUdsDid_Cb_t)(MicroUdsDid_Ctx_t *);
+typedef void (*MicroUdsServerDid_Cb_t)(MicroUdsServerDid_Ctx_t *);
 
 typedef struct
 {
@@ -76,8 +76,8 @@ typedef struct
     volatile bool is_valid; // 有效 [REVIEW] 原名 is_vaild
 
     void *Userdata; // 用户数据
-    MicroUdsDid_Cb_t cb;
-} MicroUdsDidItem_t;
+    MicroUdsServerDid_Cb_t cb;
+} MicroUdsServerDidItem_t;
 
 typedef struct
 {
@@ -86,19 +86,19 @@ typedef struct
     // uint8_t flags; // 标志
 
     uint8_t permis;  // 安全权限 0 直接放行
-    uint32_t session; // 会话 0 直接放行  [REVIEW] 位掩码，见 MicroUdsDidItem_t
+    uint32_t session; // 会话 0 直接放行  [REVIEW] 位掩码，见 MicroUdsServerDidItem_t
 
     uint8_t *data;     // 数据，配置时指向
     uint16_t data_len; // 数据长度
 
     void *Userdata; // 用户数据
-    MicroUdsDid_Cb_t cb;
-} MicroUdsDidItem_Config_t; // 配置列表
+    MicroUdsServerDid_Cb_t cb;
+} MicroUdsServerDidItem_Config_t; // 配置列表
 
 /**
  * [REVIEW] 动态DID的一个"片段"。
  * 回答你原来的疑问 "因为动态did是组合的静态did，所以我应该保留回调？":
- * 不要拷贝整个 MicroUdsDidItem_t (原来 Item[i] = *static_item，一个Item近30字节，一个动态DID 5 个，一共 8 个就是1KB多)，
+ * 不要拷贝整个 MicroUdsServerDidItem_t (原来 Item[i] = *static_item，一个Item近30字节，一个动态DID 5 个，一共 8 个就是1KB多)，
  * 也不能只存数据指针: 那样读取动态DID时就绕过了源DID的会话/安全检查和刷新回调，还丢掉了"起始位置/长度"。
  * 只记录"来源 + 位置 + 长度"，读取时再回到源DID(查表→权限检查→cb刷新→按位置/长度取数据)。
  */
@@ -108,33 +108,33 @@ typedef struct
     uint16_t pos;     // 在源数据记录中的起始位置，从 1 开始
     uint16_t size;    // 取多少字节
     uint32_t addr;    // 内存起始地址 (type == MICROUDSDID_DYNA_ADDRESS)
-} MicroUdsDid_DynaItem_t;
+} MicroUdsServerDid_DynaItem_t;
 
 typedef struct {
     uint16_t dync_did; // 动态标识符
     // uint32_t addr; // 原标识符
 
-    MicroUdsDid_DynaType_t type;
+    MicroUdsServerDid_DynaType_t type;
     // uint8_t *data;   // [REVIEW] 动态DID自己不持有数据，数据在读取时从来源现取，所以这个字段去掉了
     uint16_t data_len;  // [REVIEW] 改为: 各片段长度之和(定义时算好，0x22 读取前用来预估响应长度)
 
-    MicroUdsDid_DynaItem_t Item[MICROUDS_DID_DYNAMICALLY_ITEM_LEN]; 
+    MicroUdsServerDid_DynaItem_t Item[MICROUDS_DID_DYNAMICALLY_ITEM_LEN]; 
 
     uint16_t item_num; 
 
     volatile bool is_active; // 这里用激活标识符而不是有效
-}MicroUdsDid_Dynamically_t;
+}MicroUdsServerDid_Dynamically_t;
 
 typedef struct
 {
-    MicroUdsDidItem_t Read[MICROUDS_DID_READ_SIZE];
-    MicroUdsDidItem_t Write[MICROUDS_DID_WRITE_SIZE];
-    MicroUdsDid_Dynamically_t Dynamically[MICROUDS_DID_DYNAMICALLY_SIZE];
+    MicroUdsServerDidItem_t Read[MICROUDS_DID_READ_SIZE];
+    MicroUdsServerDidItem_t Write[MICROUDS_DID_WRITE_SIZE];
+    MicroUdsServerDid_Dynamically_t Dynamically[MICROUDS_DID_DYNAMICALLY_SIZE];
     uint16_t read_num;
     uint16_t write_num;
     uint16_t dync_num; 
 
-} MicroUdsDid_Obj_t;
+} MicroUdsServerDid_Obj_t;
 
 #ifdef __cplusplus
 }
