@@ -2,7 +2,7 @@
  * @file MicroUds.c
  * @author xfp23
  * @brief MicroUds实现
- * @version 0.2
+ * @version \ref MICROUDS_VERSION
  * @date 2026-10-21
  *
  * @copyright Copyright (c) 2026

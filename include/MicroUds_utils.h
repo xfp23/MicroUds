@@ -2,7 +2,7 @@
  * @file MicroUds_utils.h
  * @author xfp23
  * @brief 
- * @version 0.2
+ * @version \ref MICROUDS_VERSION
  * @date 2026-10-22
  * 
  * @copyright Copyright (c) 2026

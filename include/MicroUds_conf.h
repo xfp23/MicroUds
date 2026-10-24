@@ -2,7 +2,7 @@
  * @file MicroUds_conf.h
  * @author xfp23
  * @brief MicroUds 配置项
- * @version 0.2
+ * @version \ref MICROUDS_VERSION
  * @date 2026-10-21
  *
  * @copyright Copyright (c) 2026
@@ -120,7 +120,7 @@ extern "C"
 #define MICROUDS_DID_DYNA_ID_MAX 0xF3FFu
 
 // 是否允许 0x2C 02 (按内存地址定义动态DID)。允许诊断仪读内存，量产默认关闭；打开时必须实现 MicroUds_Did_AddrReadable() 白名单
-#define MICROUDS_DID_DYNA_BY_ADDR 0u
+#define MICROUDS_DID_DYNA_BY_ADDR 1u
 
 // 回到默认会话时是否清除所有动态DID (多数规范: 复位或回默认会话后动态定义失效)
 #define MICROUDS_DID_DYNA_CLEAR_ON_DEFAULT 1u

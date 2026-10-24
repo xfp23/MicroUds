@@ -2,7 +2,7 @@
  * @file MicroUds_Did.c
  * @author Xfp23
  * @brief 先只实现 22 2E 2C也写了吧
- * @version 0.1
+ * @version \ref MICROUDS_VERSION
  * @date 2026-10-23
  *
  * @copyright Copyright (c) 2026
@@ -52,7 +52,8 @@ static uint8_t MicroUds_Did_Access(const MicroUds_ServiceCtx_t *ctx, const Micro
 {
     if (item->session != 0u && (item->session & MICROUDS_SET_SESSION(ctx->session)) == 0u)
     {
-        return (uint8_t)MICROUDS_DID_NRC_SESSION;
+        // return (uint8_t)MICROUDS_DID_NRC_SESSION; // [就按标准来，不需要改了]
+        return (uint8_t)MICROUDS_NRC_ROOR;
     }
 
     if (!MicroUds_Did_SecurityPass(ctx->sec_level, item->permis))
