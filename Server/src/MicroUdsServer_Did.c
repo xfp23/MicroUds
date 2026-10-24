@@ -11,7 +11,7 @@
 #include "MicroUdsServer_Did.h"
 #include "MicroUdsServer.h"
 
-#if MICROUDS_DID_ENABLE
+#if MICROUDS_DID_ENABLE && MICROUDS_SERVER_ENABLE
 
 static MicroUdsServerDid_Obj_t did_obj = {0};
 

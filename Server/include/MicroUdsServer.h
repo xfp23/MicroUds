@@ -19,6 +19,8 @@ extern "C"
 {
 #endif
 
+#if MICROUDS_SERVER_ENABLE
+
 /* ============================== 内核API ============================== */
 
 /**
@@ -131,6 +133,8 @@ extern void MicroUdsServer_SecurityReqSeed(uint8_t level, uint8_t *out, uint32_t
  * @param key_len  [in] key 的容量(=MICROUDS_KEY_SIZE)；[out] 实际密钥长度
  */
 extern void MicroUdsServer_SecurityGetKey(uint8_t level, const uint8_t *seed, uint32_t seed_len, uint8_t *key, uint32_t *key_len);
+
+#endif
 
 #ifdef __cplusplus
 }

@@ -10,6 +10,8 @@
  */
 #include "MicroUdsServer.h"
 
+#if MICROUDS_SERVER_ENABLE
+
 #if MICROUDS_DID_ENABLE
 #include "MicroUdsServer_Did.h"
 #endif
@@ -1149,3 +1151,5 @@ void __attribute__((weak)) MicroUdsServer_SecurityGetKey(uint8_t level, const ui
         *key_len = 0; // 没有实现 -> 任何密钥都校验失败
     }
 }
+
+#endif
