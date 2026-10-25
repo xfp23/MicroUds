@@ -19,7 +19,7 @@
 // MICROUDS_INSTANCE_NUM 先不做多实例
 
 // [REVIEW] 原来是非static的全局，没有任何地方在外部引用它，改为文件内可见
-static MicroUdsServer_Obj_t uds_obj = {0};
+static MicroUdsServer_Obj_t server_obj = {0};
 
 static bool MicroUdsServer_SecurityVerify(void);
 static void MicroUdsServer_SecurityLock(void);
@@ -60,7 +60,7 @@ static MicroUds_Status_t NegativeResponse(uint8_t sid, uint8_t nrc);
 
 static MicroUds_Status_t PositiveResponse(uint8_t sid, bool has_sub, uint8_t sub, const uint8_t *payload, uint32_t len)
 {
-    if (uds_obj.resp.active)
+    if (server_obj.resp.active)
     {
         return MICROUDS_BUSY;
     }
@@ -77,25 +77,25 @@ static MicroUds_Status_t PositiveResponse(uint8_t sid, bool has_sub, uint8_t sub
         return NegativeResponse(sid, MICROUDS_NRC_RTL); // 响应过长
     }
 
-    uds_obj.resp.type = MICROUDS_RESPTYPE_POSITIVE; // 正响应
-    uds_obj.resp.addr = uds_obj.pdu.addr;
-    uds_obj.resp.Inhibit = uds_obj.pdu.suppress ? 1u : 0u;
-    uds_obj.resp.apply_ssid = 0;
+    server_obj.resp.type = MICROUDS_RESPTYPE_POSITIVE; // 正响应
+    server_obj.resp.addr = server_obj.pdu.addr;
+    server_obj.resp.Inhibit = server_obj.pdu.suppress ? 1u : 0u;
+    server_obj.resp.apply_ssid = 0;
 
-    uds_obj.resp.data[0] = (uint8_t)(sid + 0x40u);
+    server_obj.resp.data[0] = (uint8_t)(sid + 0x40u);
     if (has_sub)
     {
-        uds_obj.resp.data[1] = sub;
+        server_obj.resp.data[1] = sub;
     }
 
     // payload 通常已经就在响应缓冲里(回调直接写进去的)，这时不需要再拷贝
-    if (len > 0u && payload != &uds_obj.resp.data[off])
+    if (len > 0u && payload != &server_obj.resp.data[off])
     {
-        memmove(&uds_obj.resp.data[off], payload, len);
+        memmove(&server_obj.resp.data[off], payload, len);
     }
 
-    uds_obj.resp.len = off + len;
-    uds_obj.resp.active = true;
+    server_obj.resp.len = off + len;
+    server_obj.resp.active = true;
 
     return MICROUDS_OK;
 }
@@ -108,22 +108,22 @@ static MicroUds_Status_t PositiveResponse(uint8_t sid, bool has_sub, uint8_t sub
  */
 static MicroUds_Status_t NegativeResponse(uint8_t sid, uint8_t nrc)
 {
-    if (uds_obj.resp.active)
+    if (server_obj.resp.active)
     {
         return MICROUDS_BUSY;
     }
 
-    uds_obj.resp.type = MICROUDS_RESPTYPE_NEGATIVE; // 负响应
-    uds_obj.resp.addr = uds_obj.pdu.addr;
-    uds_obj.resp.Inhibit = 0;
-    uds_obj.resp.apply_ssid = 0;
+    server_obj.resp.type = MICROUDS_RESPTYPE_NEGATIVE; // 负响应
+    server_obj.resp.addr = server_obj.pdu.addr;
+    server_obj.resp.Inhibit = 0;
+    server_obj.resp.apply_ssid = 0;
 
-    uds_obj.resp.data[0] = 0x7F;
-    uds_obj.resp.data[1] = sid;
-    uds_obj.resp.data[2] = nrc;
+    server_obj.resp.data[0] = 0x7F;
+    server_obj.resp.data[1] = sid;
+    server_obj.resp.data[2] = nrc;
 
-    uds_obj.resp.len = 3;
-    uds_obj.resp.active = true;
+    server_obj.resp.len = 3;
+    server_obj.resp.active = true;
 
     return MICROUDS_OK;
 }
@@ -134,9 +134,9 @@ static MicroUds_Status_t NegativeResponse(uint8_t sid, uint8_t nrc)
  */
 static void MicroUdsServer_RespMarkFinal(void)
 {
-    if (uds_obj.resp.active)
+    if (server_obj.resp.active)
     {
-        uds_obj.resp.final = true;
+        server_obj.resp.final = true;
     }
 }
 
@@ -159,15 +159,15 @@ static bool MicroUdsServer_IsSilentNrc(uint8_t nrc)
  */
 static void MicroUdsServer_ResponseFinish(void)
 {
-    bool final = uds_obj.resp.final;
+    bool final = server_obj.resp.final;
 
     // 0x10 的会话切换: 响应真正发出去之后才生效 (见 MicroUdsServer_ServiceRun 里关于 apply_ssid 的说明)
-    if (uds_obj.resp.apply_ssid != 0u)
+    if (server_obj.resp.apply_ssid != 0u)
     {
-        MicroUdsServer_SessionSwitch(uds_obj.resp.apply_ssid);
+        MicroUdsServer_SessionSwitch(server_obj.resp.apply_ssid);
     }
 
-    memset(&uds_obj.resp, 0, sizeof(MicroUdsServer_Response_t));
+    memset(&server_obj.resp, 0, sizeof(MicroUdsServer_Response_t));
 
     if (final)
     {
@@ -177,20 +177,20 @@ static void MicroUdsServer_ResponseFinish(void)
 
 static void MicroUdsServer_ResponseHandler(void)
 {
-    if (!uds_obj.resp.active)
+    if (!server_obj.resp.active)
     {
         return;
     }
 
     // [REVIEW] 已经交给ISOTP，等发送完成通知
-    if (uds_obj.resp.tx_wait)
+    if (server_obj.resp.tx_wait)
     {
-        if (uds_obj.tx_done)
+        if (server_obj.tx_done)
         {
-            uds_obj.tx_done = false;
+            server_obj.tx_done = false;
             MicroUdsServer_ResponseFinish();
         }
-        else if (MICROUDS_TICK_ELAPSED(uds_obj.tick, uds_obj.resp.tx_tick, MICROUDS_MS_TO_TICK(MICROUDS_TX_CONFIRM_TIMEOUT_MS)))
+        else if (MICROUDS_TICK_ELAPSED(server_obj.tick, server_obj.resp.tx_tick, MICROUDS_MS_TO_TICK(MICROUDS_TX_CONFIRM_TIMEOUT_MS)))
         {
             MicroUdsServer_ResponseFinish(); // 完成通知一直没来: 超时保护，避免请求永远卡住
         }
@@ -200,30 +200,30 @@ static void MicroUdsServer_ResponseHandler(void)
     // [REVIEW] 原来是 "!Inhibit && addr == PHY 才发"，导致功能寻址的正响应永远不发、被抑制时负响应也被吞。
     bool drop = false;
 
-    if (uds_obj.resp.type == MICROUDS_RESPTYPE_POSITIVE)
+    if (server_obj.resp.type == MICROUDS_RESPTYPE_POSITIVE)
     {
-        drop = (uds_obj.resp.Inhibit != 0u);
+        drop = (server_obj.resp.Inhibit != 0u);
     }
     else
     {
-        drop = (uds_obj.resp.addr == MICROUDS_ADDR_FUNC) && MicroUdsServer_IsSilentNrc(uds_obj.resp.data[2]);
+        drop = (server_obj.resp.addr == MICROUDS_ADDR_FUNC) && MicroUdsServer_IsSilentNrc(server_obj.resp.data[2]);
     }
 
     if (!drop)
     {
         // 先进入"等待完成"状态再调用 Transmit: 万一 Transmit 内部同步调用了 MicroUdsServer_HwRespTxDone，通知也不会丢
-        uds_obj.resp.tx_wait = true;
-        uds_obj.resp.tx_tick = uds_obj.tick;
-        uds_obj.tx_done = false;
+        server_obj.resp.tx_wait = true;
+        server_obj.resp.tx_tick = server_obj.tick;
+        server_obj.tx_done = false;
 
-        MicroUds_Status_t st = MicroUdsServer_Transmit((const uint8_t *)uds_obj.resp.data, uds_obj.resp.len);
+        MicroUds_Status_t st = MicroUdsServer_Transmit((const uint8_t *)server_obj.resp.data, server_obj.resp.len);
 
         if (st == MICROUDS_OK)
         {
             return; // 已交给传输层，等 MicroUdsServer_HwRespTxDone()
         }
 
-        uds_obj.resp.tx_wait = false;
+        server_obj.resp.tx_wait = false;
 
         if (st == MICROUDS_BUSY)
         {
@@ -247,13 +247,13 @@ static void MicroUdsServer_ResponseHandler(void)
  */
 static void MicroUdsServer_SecurityLock(void)
 {
-    uds_obj.security.permis = 0;
-    uds_obj.security.level = 0;
-    uds_obj.security.step = MICROUDS_SEC_STEP_IDLE;
-    uds_obj.security.seed_len = 0;
-    memset(uds_obj.security.seed, 0, sizeof(uds_obj.security.seed));
-    memset(uds_obj.security.key, 0, sizeof(uds_obj.security.key));
-    memset(uds_obj.security.key_len, 0, sizeof(uds_obj.security.key_len));
+    server_obj.security.permis = 0;
+    server_obj.security.level = 0;
+    server_obj.security.step = MICROUDS_SEC_STEP_IDLE;
+    server_obj.security.seed_len = 0;
+    memset(server_obj.security.seed, 0, sizeof(server_obj.security.seed));
+    memset(server_obj.security.key, 0, sizeof(server_obj.security.key));
+    memset(server_obj.security.key_len, 0, sizeof(server_obj.security.key_len));
 }
 
 /**
@@ -264,16 +264,16 @@ static void MicroUdsServer_SecurityLock(void)
  */
 static void MicroUdsServer_SessionSwitch(uint8_t ssid)
 {
-    bool changed = (ssid != uds_obj.session.ssid);
+    bool changed = (ssid != server_obj.session.ssid);
 
     if (changed)
     {
         MicroUdsServer_SecurityLock();
     }
 
-    uds_obj.session.ssid = ssid;
-    uds_obj.session.is_default = (ssid == MICROUDS_SESSION_DEFAULT);
-    uds_obj.session.last_tick = uds_obj.tick;
+    server_obj.session.ssid = ssid;
+    server_obj.session.is_default = (ssid == MICROUDS_SESSION_DEFAULT);
+    server_obj.session.last_tick = server_obj.tick;
 
 #if MICROUDS_DID_ENABLE
     if (changed)
@@ -285,7 +285,7 @@ static void MicroUdsServer_SessionSwitch(uint8_t ssid)
 
 static bool MicroUdsServer_SecurityVerify(void)
 {
-    if (uds_obj.security.key_len[0] != MICROUDS_KEY_SIZE || uds_obj.security.key_len[1] != MICROUDS_KEY_SIZE)
+    if (server_obj.security.key_len[0] != MICROUDS_KEY_SIZE || server_obj.security.key_len[1] != MICROUDS_KEY_SIZE)
     {
         return false;
     }
@@ -296,7 +296,7 @@ static bool MicroUdsServer_SecurityVerify(void)
 
     for (uint32_t i = 0; i < MICROUDS_KEY_SIZE; i++)
     {
-        diff |= (uint8_t)(uds_obj.security.key[0][i] ^ uds_obj.security.key[1][i]);
+        diff |= (uint8_t)(server_obj.security.key[0][i] ^ server_obj.security.key[1][i]);
     }
     return diff == 0u;
 }
@@ -317,10 +317,10 @@ static bool MicroUdsServer_SecurityPass(uint8_t permis)
 
     if (MICROUDS_GET_ASSIG(permis))
     {
-        return uds_obj.security.permis == need; // 指定位: 只有恰好这个等级才允许
+        return server_obj.security.permis == need; // 指定位: 只有恰好这个等级才允许
     }
 
-    return uds_obj.security.permis >= need; // 已解锁等级 >= 要求等级
+    return server_obj.security.permis >= need; // 已解锁等级 >= 要求等级
 }
 
 /* ======================================================================
@@ -338,7 +338,7 @@ static void MicroUdsServer_SvcSessionControl(MicroUdsServer_ServiceCtx_t *ctx)
 
     // [REVIEW] 不支持的会话应返回 0x12 SubFunctionNotSupported，而不是 0x10 GeneralReject。
     //          target 先判断范围再移位，原来 1 << data[1] 在 data[1]>=32(或带抑制位0x80)时是未定义行为
-    if (target == 0u || target >= 32u || (uds_obj.session.mask & MICROUDS_SET_SESSION(target)) == 0u)
+    if (target == 0u || target >= 32u || (server_obj.session.mask & MICROUDS_SET_SESSION(target)) == 0u)
     {
         MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_SFNS);
         return;
@@ -353,7 +353,7 @@ static void MicroUdsServer_SvcSessionControl(MicroUdsServer_ServiceCtx_t *ctx)
     ctx->payload[2] = (uint8_t)(p2s >> 8);
     ctx->payload[3] = (uint8_t)(p2s & 0xFFu);
 
-    uds_obj.session.pending_ssid = target; // 正响应发出之后才真正切换
+    server_obj.session.pending_ssid = target; // 正响应发出之后才真正切换
     MicroUdsServer_CtxPositive(ctx, 4u);
 }
 
@@ -380,7 +380,7 @@ static void MicroUdsServer_SvcTesterPresent(MicroUdsServer_ServiceCtx_t *ctx)
 //   现在改为在服务分发里同步处理，一次请求一次响应，不再需要 step=1/2/3 的中间态
 static void MicroUdsServer_SvcSecurityAccess(MicroUdsServer_ServiceCtx_t *ctx)
 {
-    MicroUdsServer_Security_t *sec = &uds_obj.security;
+    MicroUdsServer_Security_t *sec = &server_obj.security;
     uint8_t sub = ctx->sub_func;
 
     if (sub == 0u || sub > (uint8_t)(2u * MICROUDS_SECURITY_MAX_LEVEL))
@@ -396,7 +396,7 @@ static void MicroUdsServer_SvcSecurityAccess(MicroUdsServer_ServiceCtx_t *ctx)
         /* ---------- 奇数子功能: requestSeed ---------- */
         if (sec->delay_active)
         {
-            if (!MICROUDS_TICK_ELAPSED(uds_obj.tick, sec->delay_start, MICROUDS_MS_TO_TICK(MICROUDS_SECURITY_DELAY_MS)))
+            if (!MICROUDS_TICK_ELAPSED(server_obj.tick, sec->delay_start, MICROUDS_MS_TO_TICK(MICROUDS_SECURITY_DELAY_MS)))
             {
                 MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_RTDSNE); // 延时还没到
                 return;
@@ -481,7 +481,7 @@ static void MicroUdsServer_SvcSecurityAccess(MicroUdsServer_ServiceCtx_t *ctx)
     if (sec->attempts >= MICROUDS_SECURITY_MAX_ATTEMPTS)
     {
         sec->delay_active = true;
-        sec->delay_start = uds_obj.tick;
+        sec->delay_start = server_obj.tick;
         MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_ENOA); // 超过尝试次数
         return;
     }
@@ -494,11 +494,11 @@ static void MicroUdsServer_SvcSecurityAccess(MicroUdsServer_ServiceCtx_t *ctx)
 
 static const MicroUdsServer_ServiceEntry_t *MicroUdsServer_FindService(uint8_t sid)
 {
-    for (uint32_t i = 0; i < uds_obj.service.serv_num; i++)
+    for (uint32_t i = 0; i < server_obj.service.serv_num; i++)
     {
-        if (uds_obj.service.serv[i].is_valid && uds_obj.service.serv[i].sid == sid)
+        if (server_obj.service.serv[i].is_valid && server_obj.service.serv[i].sid == sid)
         {
-            return &uds_obj.service.serv[i];
+            return &server_obj.service.serv[i];
         }
     }
     return NULL; // 先把整个骨架搭起来，什么查找算法的后续再说吧，先跑起来验证架构再说 (后续可由生成器排序后二分)
@@ -519,7 +519,7 @@ static const MicroUdsServer_SubFunc_t *MicroUdsServer_FindSubFunc(const MicroUds
 static void MicroUdsServer_RegisterBuiltin(uint8_t sid, uint8_t flags, uint32_t session_mask, uint8_t permis,
                                      uint16_t min_len, uint16_t max_len, MicroUdsServer_ServiceFunc_t cb)
 {
-    MicroUdsServer_ServiceEntry_t *s = &uds_obj.service.serv[uds_obj.service.serv_num++];
+    MicroUdsServer_ServiceEntry_t *s = &server_obj.service.serv[server_obj.service.serv_num++];
 
     s->sid = sid;
     s->flags = (uint8_t)(flags | MICROUDS_SERV_FLAG_BUILTIN | MICROUDS_SERV_FLAG_HAS_SUBFUNC);
@@ -538,7 +538,7 @@ static void MicroUdsServer_RegisterBuiltin(uint8_t sid, uint8_t flags, uint32_t 
 static void MicroUdsServer_NoSubRegisterBuiltin(uint8_t sid, uint8_t flags, uint32_t session_mask, uint8_t permis,
                                      uint16_t min_len, uint16_t max_len, MicroUdsServer_ServiceFunc_t cb)
 {
-    MicroUdsServer_ServiceEntry_t *s = &uds_obj.service.serv[uds_obj.service.serv_num++];
+    MicroUdsServer_ServiceEntry_t *s = &server_obj.service.serv[server_obj.service.serv_num++];
 
     s->sid = sid;
     s->flags = (uint8_t)(flags | MICROUDS_SERV_FLAG_BUILTIN);
@@ -562,7 +562,7 @@ MicroUds_Status_t MicroUdsServer_ServiceRegisterServ(const MicroUdsServer_Servic
 
     // [REVIEW] 原来每次注册都从 serv[0] 开始覆盖，第二次注册会冲掉第一次的服务(包括子功能)，而且会把 service.active 清掉。
     //          现在是追加，并且先整体校验再提交，避免注册一半失败留下半张表。
-    if (uds_obj.service.serv_num + size > MICROUDS_SERVICE_MAX_NUMBER)
+    if (server_obj.service.serv_num + size > MICROUDS_SERVICE_MAX_NUMBER)
     {
         return MICROUDS_PARAM_ERR;
     }
@@ -591,7 +591,7 @@ MicroUds_Status_t MicroUdsServer_ServiceRegisterServ(const MicroUdsServer_Servic
 
     for (size_t i = 0; i < size; i++)
     {
-        MicroUdsServer_ServiceEntry_t *s = &uds_obj.service.serv[uds_obj.service.serv_num++];
+        MicroUdsServer_ServiceEntry_t *s = &server_obj.service.serv[server_obj.service.serv_num++];
 
         memset(s, 0, sizeof(MicroUdsServer_ServiceEntry_t));
         s->sid = table[i].sid;
@@ -617,11 +617,11 @@ MicroUds_Status_t MicroUdsServer_ServiceRegisterSubFunc(uint8_t sid, const Micro
 
     MicroUdsServer_ServiceEntry_t *service = NULL;
 
-    for (uint32_t i = 0; i < uds_obj.service.serv_num; i++)
+    for (uint32_t i = 0; i < server_obj.service.serv_num; i++)
     {
-        if (sid == uds_obj.service.serv[i].sid)
+        if (sid == server_obj.service.serv[i].sid)
         {
-            service = &uds_obj.service.serv[i];
+            service = &server_obj.service.serv[i];
             break;
         }
     }
@@ -682,19 +682,19 @@ MicroUds_Status_t MicroUdsServer_ServiceRegisterSubFunc(uint8_t sid, const Micro
  */
 static void MicroUdsServer_RequestDone(void)
 {
-    uds_obj.service.pending = false;
-    uds_obj.service.pending_cnt = 0;
-    uds_obj.service.call_cnt = 0;
-    uds_obj.service.cur = NULL;
-    uds_obj.service.cur_sub = NULL;
+    server_obj.service.pending = false;
+    server_obj.service.pending_cnt = 0;
+    server_obj.service.call_cnt = 0;
+    server_obj.service.cur = NULL;
+    server_obj.service.cur_sub = NULL;
 
-    uds_obj.session.last_tick = uds_obj.tick; // S3 从响应处理完成起重新计时
-    uds_obj.pdu.active = false;
+    server_obj.session.last_tick = server_obj.tick; // S3 从响应处理完成起重新计时
+    server_obj.pdu.active = false;
 }
 
 static void MicroUdsServer_Reject(uint8_t nrc)
 {
-    NegativeResponse(uds_obj.pdu.sid, nrc);
+    NegativeResponse(server_obj.pdu.sid, nrc);
     MicroUdsServer_RespMarkFinal(); // [REVIEW] 负响应排进队列并标记为最终响应，请求在它发送完成后释放(见 MicroUdsServer_ResponseFinish)
 }
 
@@ -728,30 +728,30 @@ static void MicroUdsServer_ServiceRun(const MicroUdsServer_ServiceEntry_t *serv,
 
     // [REVIEW] 原来 ctx 全是 0，回调看不到请求内容，也拿不到注册时传的 Userdata
     ctx.sid = serv->sid;
-    ctx.sub_func = uds_obj.pdu.sub_func;
-    ctx.addr = uds_obj.pdu.addr;
-    ctx.req = uds_obj.pdu.payload;
-    ctx.req_len = uds_obj.pdu.len;
-    ctx.session = uds_obj.session.ssid;
-    ctx.sec_level = uds_obj.security.permis;
-    ctx.call_cnt = uds_obj.service.call_cnt;
+    ctx.sub_func = server_obj.pdu.sub_func;
+    ctx.addr = server_obj.pdu.addr;
+    ctx.req = server_obj.pdu.payload;
+    ctx.req_len = server_obj.pdu.len;
+    ctx.session = server_obj.session.ssid;
+    ctx.sec_level = server_obj.security.permis;
+    ctx.call_cnt = server_obj.service.call_cnt;
     ctx.Userdata = (sub != NULL) ? sub->Userdata : serv->Userdata;
-    ctx.payload = &uds_obj.resp.data[off]; // [ask] 回调传递的负载, 嗯嗯这里是正确的
+    ctx.payload = &server_obj.resp.data[off]; // [ask] 回调传递的负载, 嗯嗯这里是正确的
     // [REVIEW] 是的。payload 直接指向响应缓冲里 RSID(+子功能)之后的位置，回调往里写，PositiveResponse 发现 payload 已经在原位就不再拷贝。
     ctx.payload_cap = MICROUDS_RESPONSE_BUF_SIZE - off;
     ctx.resp_type = MICROUDS_RESPTYPE_NEGATIVE; // 默认负响应，回调必须显式给出结果
     ctx.nrc = MICROUDS_NRC_GR;
 
-    uds_obj.service.call_cnt++;
+    server_obj.service.call_cnt++;
     cb(&ctx);
 
     switch (ctx.resp_type)
     {
     case MICROUDS_RESPTYPE_POSITIVE:
-        if (PositiveResponse(serv->sid, has_sub, uds_obj.pdu.sub_func, ctx.payload, ctx.len) == MICROUDS_OK &&
-            uds_obj.resp.type == MICROUDS_RESPTYPE_POSITIVE) 
+        if (PositiveResponse(serv->sid, has_sub, server_obj.pdu.sub_func, ctx.payload, ctx.len) == MICROUDS_OK &&
+            server_obj.resp.type == MICROUDS_RESPTYPE_POSITIVE) 
         {
-            uds_obj.resp.apply_ssid = uds_obj.session.pending_ssid; // 0x10 成功: 响应发出后切会话
+            server_obj.resp.apply_ssid = server_obj.session.pending_ssid; // 0x10 成功: 响应发出后切会话
             // [ask] 咋切换的? 上下文太长没看懂 你这里不是run一个服务吗，咋就切换了？响应都没从硬线发完吧此时
             // [REVIEW] 这里并没有切换会话，只是"记个备忘"，完整过程是:
             //   1) 0x10 的回调(MicroUdsServer_SvcSessionControl)只做校验，把目标会话写进 session.pending_ssid (还没切)
@@ -761,24 +761,24 @@ static void MicroUdsServer_ServiceRun(const MicroUdsServer_ServiceEntry_t *serv,
             //   所以你说得对，响应没发完的时候会话是不会变的。如果响应被抑制(10 83)不发送，则在丢弃时同样走 ResponseFinish，会话照样切换。
         }
         MicroUdsServer_RespMarkFinal(); // [REVIEW] 不再在这里 RequestDone，改为标记最终响应，等发送完成后再释放
-        uds_obj.session.pending_ssid = 0;
+        server_obj.session.pending_ssid = 0;
         break;
 
     case MICROUDS_RESPTYPE_PENDING:
     {
         bool send = false;
 
-        if (!uds_obj.service.pending)
+        if (!server_obj.service.pending)
         {
-            uds_obj.service.pending = true;
-            uds_obj.service.cur = serv;
-            uds_obj.service.cur_sub = sub;
-            uds_obj.service.pending_cnt = 0;
+            server_obj.service.pending = true;
+            server_obj.service.cur = serv;
+            server_obj.service.cur_sub = sub;
+            server_obj.service.pending_cnt = 0;
             send = true; // 首次: 立刻告诉诊断仪 "收到了，在处理"
         }
-        else if (MICROUDS_TICK_ELAPSED(uds_obj.tick, uds_obj.service.pending_tick, MICROUDS_MS_TO_TICK(MICROUDS_PENDING_RESEND_MS)))
+        else if (MICROUDS_TICK_ELAPSED(server_obj.tick, server_obj.service.pending_tick, MICROUDS_MS_TO_TICK(MICROUDS_PENDING_RESEND_MS)))
         {
-            if (uds_obj.service.pending_cnt >= MICROUDS_PENDING_MAX_COUNT)
+            if (server_obj.service.pending_cnt >= MICROUDS_PENDING_MAX_COUNT)
             {
                 MicroUdsServer_Reject(MICROUDS_NRC_GR); // 拖太久，内核强制结束
                 break;
@@ -789,16 +789,16 @@ static void MicroUdsServer_ServiceRun(const MicroUdsServer_ServiceEntry_t *serv,
         if (send)
         {
             NegativeResponse(serv->sid, MICROUDS_NRC_RCRRP); // 0x78 不标记 final: 它发送完成后请求继续存活，服务回调下个周期再被调用
-            uds_obj.service.pending_tick = uds_obj.tick;
-            uds_obj.service.pending_cnt++;
+            server_obj.service.pending_tick = server_obj.tick;
+            server_obj.service.pending_cnt++;
         }
-        uds_obj.session.pending_ssid = 0;
+        server_obj.session.pending_ssid = 0;
         break;
     }
 
     case MICROUDS_RESPTYPE_NEGATIVE:
     default:
-        uds_obj.session.pending_ssid = 0;
+        server_obj.session.pending_ssid = 0;
         MicroUdsServer_Reject((ctx.nrc == MICROUDS_NRC_PR) ? MICROUDS_NRC_GR : ctx.nrc); // NRC 0x00 不是合法负响应码
         break;
     }
@@ -812,19 +812,19 @@ static void MicroUdsServer_ServiceRun(const MicroUdsServer_ServiceEntry_t *serv,
  */
 static void MicroUdsServer_ServiceHandler(void)
 {
-    MicroUdsServer_Pdu_t *pdu = &uds_obj.pdu;
+    MicroUdsServer_Pdu_t *pdu = &server_obj.pdu;
 
     // [REVIEW] 上一条响应还没发出去(传输层忙)时不处理新请求，响应缓冲只有一份
     //          (响应排队 -> 提交ISOTP -> 等发送完成，整个期间 resp.active 都是 true，所以PENDING服务也不会在 0x78 还没发完时被再次调用)
-    if (!pdu->active || uds_obj.resp.active)
+    if (!pdu->active || server_obj.resp.active)
     {
         return;
     }
 
     // PENDING 中的请求: 每个周期重入，直到回调给出最终结果
-    if (uds_obj.service.pending)
+    if (server_obj.service.pending)
     {
-        MicroUdsServer_ServiceRun(uds_obj.service.cur, uds_obj.service.cur_sub);
+        MicroUdsServer_ServiceRun(server_obj.service.cur, server_obj.service.cur_sub);
         return;
     }
 
@@ -848,7 +848,7 @@ static void MicroUdsServer_ServiceHandler(void)
         return;
     }
 
-    if ((serv->session_mask & MICROUDS_SET_SESSION(uds_obj.session.ssid)) == 0u)
+    if ((serv->session_mask & MICROUDS_SET_SESSION(server_obj.session.ssid)) == 0u)
     {
         MicroUdsServer_Reject(MICROUDS_NRC_SNSIAS); // 服务在其他会话可用，当前会话不可用
         return;
@@ -910,7 +910,7 @@ static void MicroUdsServer_ServiceHandler(void)
             return;
         }
 
-        if (sub->session_mask != 0u && (sub->session_mask & MICROUDS_SET_SESSION(uds_obj.session.ssid)) == 0u)
+        if (sub->session_mask != 0u && (sub->session_mask & MICROUDS_SET_SESSION(server_obj.session.ssid)) == 0u)
         {
             MicroUdsServer_Reject(MICROUDS_NRC_SFNSIAS); // 子功能在其他会话可用，当前会话不可用
             return;
@@ -931,7 +931,7 @@ static void MicroUdsServer_ServiceHandler(void)
         return;
     }
 
-    uds_obj.service.call_cnt = 0;
+    server_obj.service.call_cnt = 0;
     MicroUdsServer_ServiceRun(serv, sub);
 }
 
@@ -941,16 +941,16 @@ static void MicroUdsServer_ServiceHandler(void)
 
 MicroUds_Status_t MicroUdsServer_Init(void)
 {
-    memset(&uds_obj, 0, sizeof(MicroUdsServer_Obj_t));
-    uds_obj.session.mask = MICROUDS_SESSION_MASK_UPTO(MICROUDS_SESSION_MASK); // 支持 MICROUDS_SESSION_MASK 个会话 (会话1..N)
-    uds_obj.session.ssid = MICROUDS_SESSION_DEFAULT;                          // 开局设置一个默认会话 (存编号，不是掩码)
-    uds_obj.session.is_default = true;
-    uds_obj.session.hold_tick = MICROUDS_SESSION_HOLD_TICK; // [REVIEW] 原来从没赋值(=0)，且 is_default 在 0x10 之后不会变false，S3 永远不会触发
+    memset(&server_obj, 0, sizeof(MicroUdsServer_Obj_t));
+    server_obj.session.mask = MICROUDS_SESSION_MASK_UPTO(MICROUDS_SESSION_MASK); // 支持 MICROUDS_SESSION_MASK 个会话 (会话1..N)
+    server_obj.session.ssid = MICROUDS_SESSION_DEFAULT;                          // 开局设置一个默认会话 (存编号，不是掩码)
+    server_obj.session.is_default = true;
+    server_obj.session.hold_tick = MICROUDS_SESSION_HOLD_TICK; // [REVIEW] 原来从没赋值(=0)，且 is_default 在 0x10 之后不会变false，S3 永远不会触发
 
     // 内核内置服务
     // 0x10: 所有会话可用，允许功能寻址，支持抑制位，请求长度固定 2 字节
     MicroUdsServer_RegisterBuiltin(0x10, MICROUDS_SERV_FLAG_SUPPRESS | MICROUDS_SERV_FLAG_FUNC_ADDR,
-                             uds_obj.session.mask, 0, 2, 2, MicroUdsServer_SvcSessionControl); // [ask] 为了避免我说的 10 01 你返回负响应的事情，我这里用了我加的MicroUdsServer_NoSubRegisterBuiltin
+                             server_obj.session.mask, 0, 2, 2, MicroUdsServer_SvcSessionControl); // [ask] 为了避免我说的 10 01 你返回负响应的事情，我这里用了我加的MicroUdsServer_NoSubRegisterBuiltin
     // [REVIEW] 不需要用 NoSub，而且 NoSub 会让 0x10 完全失效: NoSub 不带 HAS_SUBFUNC 标志 -> ServiceHandler 不解析子功能 -> ctx->sub_func 恒为 0
     //          -> MicroUdsServer_SvcSessionControl 里 target==0 -> 任何 10 xx 都返回 0x12；就算改对了，响应也少了子功能字节，抑制位(10 83)也不生效。
     //          10 01 不会被拒绝的原因见 MicroUdsServer_ServiceHandler 里关于 sub_func_num 的说明。已改回 MicroUdsServer_RegisterBuiltin。
@@ -963,7 +963,7 @@ MicroUds_Status_t MicroUdsServer_Init(void)
 
     // 0x3E: 所有会话可用，允许功能寻址，支持抑制位 (3E 80)，请求长度固定 2 字节
     MicroUdsServer_RegisterBuiltin(0x3E, MICROUDS_SERV_FLAG_SUPPRESS | MICROUDS_SERV_FLAG_FUNC_ADDR,
-                             uds_obj.session.mask, 0, 2, 2, MicroUdsServer_SvcTesterPresent);
+                             server_obj.session.mask, 0, 2, 2, MicroUdsServer_SvcTesterPresent);
 
 #if MICROUDS_DID_ENABLE
     // [REVIEW] 原来没有调用 DID 模块的初始化函数，did_obj 只有静态初始化的零值，重新 Init 时旧的DID表会残留
@@ -996,18 +996,18 @@ MicroUds_Status_t MicroUdsServer_Init(void)
 
 void MicroUdsServer_TickHandler(void)
 {
-    uds_obj.tick++;
+    server_obj.tick++;
 }
 
 void MicroUdsServer_TimerHandler(void)
 {
-    uint32_t current_tick = uds_obj.tick; // 取得当前tick
+    uint32_t current_tick = server_obj.tick; // 取得当前tick
 
     // S3: 非默认会话下，空闲超过 hold_tick 回到默认会话
     // [REVIEW] 请求处理中(含PENDING)、响应还没发出时不计S3；回默认会话后统一走 SessionSwitch(会重新锁定安全)。
     //          原来的 "last_tick += hold_tick  避免周期漂移" 是周期定时器的写法，超时一次性事件不需要。
-    if (uds_obj.session.ssid != MICROUDS_SESSION_DEFAULT && !uds_obj.pdu.active && !uds_obj.resp.active &&
-        MICROUDS_TICK_ELAPSED(current_tick, uds_obj.session.last_tick, uds_obj.session.hold_tick))
+    if (server_obj.session.ssid != MICROUDS_SESSION_DEFAULT && !server_obj.pdu.active && !server_obj.resp.active &&
+        MICROUDS_TICK_ELAPSED(current_tick, server_obj.session.last_tick, server_obj.session.hold_tick))
     {
         MicroUdsServer_SessionSwitch(MICROUDS_SESSION_DEFAULT);
     }
@@ -1028,15 +1028,15 @@ void MicroUdsServer_TimerHandler(void)
  */
 void MicroUdsServer_HwRespTxDone(void)
 {
-    // uds_obj.service.pending = false;
-    // uds_obj.service.pending_cnt = 0;
-    // uds_obj.service.call_cnt = 0;
-    // uds_obj.service.cur = NULL;
-    // uds_obj.service.cur_sub = NULL;
+    // server_obj.service.pending = false;
+    // server_obj.service.pending_cnt = 0;
+    // server_obj.service.call_cnt = 0;
+    // server_obj.service.cur = NULL;
+    // server_obj.service.cur_sub = NULL;
 
-    // uds_obj.session.last_tick = uds_obj.tick; // S3 从响应处理完成起重新计时
-    // uds_obj.pdu.active = false;
-    uds_obj.tx_done = true;
+    // server_obj.session.last_tick = server_obj.tick; // S3 从响应处理完成起重新计时
+    // server_obj.pdu.active = false;
+    server_obj.tx_done = true;
 }
 
 MicroUds_Status_t MicroUdsServer_RxIndication(const uint8_t *data, size_t len, MicroUds_AddrType_t addrType)
@@ -1052,12 +1052,12 @@ MicroUds_Status_t MicroUdsServer_RxIndication(const uint8_t *data, size_t len, M
 
     // [REVIEW] 原来每来一条请求就覆盖 pdu/resp 的全局字段(addr、Inhibit...)，上一条还没处理完时会串。
     //          现在一次只处理一条，忙则拒收。如果项目要求 "忙时回 0x21"，由传输层根据返回值决定。
-    if (uds_obj.pdu.active)
+    if (server_obj.pdu.active)
     {
         return MICROUDS_BUSY;
     }
 
-    MicroUdsServer_Pdu_t *pdu = &uds_obj.pdu;
+    MicroUdsServer_Pdu_t *pdu = &server_obj.pdu;
 
     pdu->addr = addrType;
     pdu->sid = data[0];
@@ -1080,7 +1080,7 @@ MicroUds_Status_t MicroUdsServer_RxIndication(const uint8_t *data, size_t len, M
     }
 
     // 收到请求后同步会话时间
-    uds_obj.session.last_tick = uds_obj.tick;
+    server_obj.session.last_tick = server_obj.tick;
 
     // 最后才置 active，保证 TimerHandler 看到 active 时请求内容已经完整 (RxIndication 可能在中断/另一个任务里)
     pdu->active = true;
@@ -1099,12 +1099,12 @@ MicroUds_Status_t MicroUdsServer_RxIndication(const uint8_t *data, size_t len, M
 
 uint8_t MicroUdsServer_GetSession(void)
 {
-    return uds_obj.session.ssid;
+    return server_obj.session.ssid;
 }
 
 uint8_t MicroUdsServer_GetSecurityLevel(void)
 {
-    return uds_obj.security.permis;
+    return server_obj.security.permis;
 }
 
 /**
