@@ -1,6 +1,6 @@
 /**
  * @file MicroUdsServer.c
- * @author xfp23
+ * @author https://xfp23.github.io
  * @brief MicroUds 服务端内核
  * @version \ref MICROUDS_VERSION
  * @date 2026-10-21

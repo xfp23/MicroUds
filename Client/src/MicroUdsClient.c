@@ -1,6 +1,6 @@
 /**
  * @file MicroUdsClient.c
- * @author xfp23
+ * @author https://xfp23.github.io
  * @brief 
  * @version 0.1
  * @date 2026-10-24

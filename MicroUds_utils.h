@@ -1,6 +1,6 @@
 /**
  * @file MicroUdsServer_utils.h
- * @author xfp23
+ * @author https://xfp23.github.io
  * @brief 
  * @version \ref MICROUDS_VERSION
  * @date 2026-10-22
