@@ -104,7 +104,7 @@ static inline void MicroUdsServer_CtxPending(MicroUdsServer_ServiceCtx_t *ctx)
  * @note   目前没有"发送完成确认"，0x10的会话切换在 Transmit 返回OK时就生效。
  *         后续建议增加 MicroUdsServer_TxConfirmation() 让传输层在真正发完后通知内核。
  */
-extern MicroUds_Status_t MicroUdsServer_Transmit(const uint8_t *pdu, uint32_t len);
+extern MicroUds_Status_t MicroUdsServer_RespTransmit(const uint8_t *pdu, uint32_t len);
 
 /**
  * @brief 响应完成通知,由ISOTP响应发送完成后回调

@@ -306,7 +306,7 @@ static void MicroUdsServer_ResponseHandler(void)
         server_obj.resp.tx_tick = server_obj.tick;
         server_obj.tx_done = false;
 
-        MicroUds_Status_t st = MicroUdsServer_Transmit((const uint8_t *)server_obj.resp.data, server_obj.resp.len);
+        MicroUds_Status_t st = MicroUdsServer_RespTransmit((const uint8_t *)server_obj.resp.data, server_obj.resp.len);
 
         if (st == MICROUDS_OK)
         {
@@ -1217,7 +1217,7 @@ uint8_t MicroUdsServer_GetSecurityLevel(void)
  *         MICROUDS_BUSY 传输层暂时忙，内核下个周期重试
  *         其他          发送失败，内核丢弃这条响应
  */
-MicroUds_Status_t __attribute__((weak)) MicroUdsServer_Transmit(const uint8_t *pdu, uint32_t len)
+MicroUds_Status_t __attribute__((weak)) MicroUdsServer_RespTransmit(const uint8_t *pdu, uint32_t len)
 {
     (void)pdu;
     (void)len;
