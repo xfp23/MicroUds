@@ -18,6 +18,11 @@ extern "C"
 {
 #endif
 
+typedef enum {
+    MICROUDS_SERVER_REQ_HANDLE, // 处理一个请求前
+    MICROUDS_SERVER_RESP_HANDLE, // 发送一个响应后
+} MicroUdsServer_Event_t;
+
 /**
  * @brief 服务/子功能回调的上下文
  * @note  [REVIEW] 回答原来的疑问 "上下文如何设计？应该用统一的回调函数通知？还是让用户返回NRC 0 就是正响应?":
@@ -32,6 +37,7 @@ typedef struct
     uint8_t sid;              // 请求的SID
     uint8_t sub_func;         // 子功能(已去掉抑制位)，无子功能的服务为0
     MicroUds_AddrType_t addr; // 物理/功能寻址
+    // MicroUdsServer_Event_t event; //
     const uint8_t *req;       // 请求数据，不含SID和子功能
     uint32_t req_len;         // 请求数据长度
     uint8_t session;          // 当前会话编号

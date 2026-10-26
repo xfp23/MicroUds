@@ -134,6 +134,13 @@ extern void MicroUdsServer_SecurityReqSeed(uint8_t level, uint8_t *out, uint32_t
  */
 extern void MicroUdsServer_SecurityGetKey(uint8_t level, const uint8_t *seed, uint32_t seed_len, uint8_t *key, uint32_t *key_len);
 
+/**
+ * @brief 内核内置服务回调 用户重写 比如 10 02 跳转bootloader
+ * 
+ * @param ctx 
+ */
+extern void MicroUdsServer_OnResponseSent(MicroUdsServer_ServiceCtx_t* ctx);
+
 #endif
 
 #ifdef __cplusplus
