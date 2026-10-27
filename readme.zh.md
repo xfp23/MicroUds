@@ -1,10 +1,10 @@
 # MicroUds
 
-> 一个小巧、可移植的 **UDS (ISO 14229-1) server** 面向微控制器的 UDS（ISO 14229-1）服务器，使用 C99 编写。
+> 一个轻量、可移植的 **UDS (ISO 14229-1) server** 面向微控制器的 UDS（ISO 14229-1）服务器，使用 C99 编写。
 
 > 它只处理 *complete* 完整的 UDS PDU——分段和流量控制由你的 ISO-TP 协议栈负责（例如 MicroIsotp）。
 
-[中文文档](readme.zh.md)
+[EN](./readme.md)
 
 - **仅使用静态内存** — no `malloc`, about 2.7 KB RAM with the default configuration on a 32-bit MCU.
 

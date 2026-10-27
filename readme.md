@@ -3,7 +3,7 @@
 > A small, portable **UDS (ISO 14229-1) server** for microcontrollers, written in C99.
 > It handles *complete* UDS PDUs only — segmentation and flow control belong to your ISO-TP stack (e.g. MicroIsotp).
 
-[中文文档](readme.zh.md)
+[中文文档](/readme.zh.md)
 
 - **Static memory only** — no `malloc`, about 2.7 KB RAM with the default configuration on a 32-bit MCU.
 - **Non-blocking, single-threaded kernel** — one `TimerHandler()` call in your main loop drives everything.
