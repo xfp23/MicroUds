@@ -444,6 +444,14 @@ static void MicroUdsServer_SvcSessionControl(MicroUdsServer_ServiceCtx_t *ctx)
         return;
     }
 
+    MicroUdsServer_KernelCallback(ctx);
+
+    if(ctx->resp_type == MICROUDS_RESPTYPE_NEGATIVE)
+    {
+        MicroUdsServer_CtxNegative(ctx,ctx->nrc);
+        return;
+    }
+
     uint16_t p2 = (uint16_t)MICROUDS_P2_SERVER_MS;
     uint16_t p2s = (uint16_t)(MICROUDS_P2STAR_SERVER_MS / 10u);
 
@@ -1289,6 +1297,11 @@ void __attribute__((weak)) MicroUdsServer_SecurityGetKey(uint8_t level, const ui
  *   }
  */
 void __attribute__((weak)) MicroUdsServer_OnResponseSent(MicroUdsServer_ServiceCtx_t *ctx)
+{
+    (void)ctx;
+}
+
+void __attribute__((weak)) MicroUdsServer_KernelCallback(MicroUdsServer_ServiceCtx_t *ctx)
 {
     (void)ctx;
 }

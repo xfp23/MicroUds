@@ -19,7 +19,6 @@ extern "C"
 // [REVIEW] 参数加了括号；返回布尔。注意：只有声明了 MICROUDS_SERV_FLAG_SUPPRESS 的服务才能按这个位去解释子功能
 #define MICROUDS_GET_RESPINHIBIT(x) (((x) & 0x80U) != 0U)
 
-// [REVIEW] 原来是 ((1U << x) - 1U)，那是"低于x的所有位都置1"，用来表示单个会话是错的:
 //   ssid=3 时得到 0b111，而不是 0b1000。 会话位掩码应该是 "第x位"，x 取值 0..31
 #define MICROUDS_SET_SESSION(x) ((uint32_t)1u << (x))
 

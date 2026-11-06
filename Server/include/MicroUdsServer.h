@@ -141,6 +141,13 @@ extern void MicroUdsServer_SecurityGetKey(uint8_t level, const uint8_t *seed, ui
  */
 extern void MicroUdsServer_OnResponseSent(MicroUdsServer_ServiceCtx_t* ctx);
 
+/**
+ * @brief 
+ * 
+ * @param ctx 
+ */
+extern void MicroUdsServer_KernelCallback(MicroUdsServer_ServiceCtx_t *ctx);
+
 #endif
 
 #ifdef __cplusplus
