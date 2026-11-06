@@ -444,11 +444,13 @@ static void MicroUdsServer_SvcSessionControl(MicroUdsServer_ServiceCtx_t *ctx)
         return;
     }
 
+    ctx->resp_type = MICROUDS_RESPTYPE_POSITIVE;
+
     MicroUdsServer_KernelCallback(ctx);
 
-    if(ctx->resp_type == MICROUDS_RESPTYPE_NEGATIVE)
+    if (ctx->resp_type == MICROUDS_RESPTYPE_NEGATIVE)
     {
-        MicroUdsServer_CtxNegative(ctx,ctx->nrc);
+        MicroUdsServer_CtxNegative(ctx, ctx->nrc);
         return;
     }
 
@@ -636,7 +638,7 @@ static const MicroUdsServer_SubFunc_t *MicroUdsServer_FindSubFunc(const MicroUds
  * 它和"有没有注册子功能表"是两回事: 这些内置服务不需要子功能表，由服务级回调自己看 ctx->sub_func。
  */
 static void MicroUdsServer_RegisterBuiltin(uint8_t sid, uint8_t flags, uint32_t session_mask, uint8_t permis,
-                                     uint16_t min_len, uint16_t max_len, MicroUdsServer_ServiceFunc_t cb)
+                                           uint16_t min_len, uint16_t max_len, MicroUdsServer_ServiceFunc_t cb)
 {
     MicroUdsServer_ServiceEntry_t *s = &server_obj.service.serv[server_obj.service.serv_num++];
 
@@ -660,7 +662,7 @@ static void MicroUdsServer_RegisterBuiltin(uint8_t sid, uint8_t flags, uint32_t 
  * 不带 HAS_SUBFUNC 时内核不解析子功能，ctx->sub_func 恒为 0，响应里也不会回显子功能。
  */
 static void MicroUdsServer_NoSubRegisterBuiltin(uint8_t sid, uint8_t flags, uint32_t session_mask, uint8_t permis,
-                                     uint16_t min_len, uint16_t max_len, MicroUdsServer_ServiceFunc_t cb)
+                                                uint16_t min_len, uint16_t max_len, MicroUdsServer_ServiceFunc_t cb)
 {
     MicroUdsServer_ServiceEntry_t *s = &server_obj.service.serv[server_obj.service.serv_num++];
 
@@ -1074,19 +1076,19 @@ MicroUds_Status_t MicroUdsServer_Init(void)
 {
     memset(&server_obj, 0, sizeof(MicroUdsServer_Obj_t));
     server_obj.session.mask = MICROUDS_SESSION_MASK_UPTO(MICROUDS_SESSION_MASK); // 支持会话 1..MICROUDS_SESSION_MASK
-    server_obj.session.ssid = MICROUDS_SESSION_DEFAULT; // 上电进默认会话。ssid 永远存"会话编号"，不是位掩码
+    server_obj.session.ssid = MICROUDS_SESSION_DEFAULT;                          // 上电进默认会话。ssid 永远存"会话编号"，不是位掩码
     server_obj.session.is_default = true;
     server_obj.session.hold_tick = MICROUDS_SESSION_HOLD_TICK;
 
     MicroUdsServer_RegisterBuiltin(0x10, MICROUDS_SERV_FLAG_SUPPRESS | MICROUDS_SERV_FLAG_FUNC_ADDR,
-                             server_obj.session.mask, 0, 2, 2, MicroUdsServer_SvcSessionControl);
+                                   server_obj.session.mask, 0, 2, 2, MicroUdsServer_SvcSessionControl);
 
     MicroUdsServer_RegisterBuiltin(0x27, 0,
-                             MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND),
-                             0, 2, 0, MicroUdsServer_SvcSecurityAccess);
+                                   MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND),
+                                   0, 2, 0, MicroUdsServer_SvcSecurityAccess);
 
     MicroUdsServer_RegisterBuiltin(0x3E, MICROUDS_SERV_FLAG_SUPPRESS | MICROUDS_SERV_FLAG_FUNC_ADDR,
-                             server_obj.session.mask, 0, 2, 2, MicroUdsServer_SvcTesterPresent);
+                                   server_obj.session.mask, 0, 2, 2, MicroUdsServer_SvcTesterPresent);
 
 #if MICROUDS_DID_ENABLE
     if (MicroUdsServer_Did_Init() != MICROUDS_OK)
@@ -1094,16 +1096,16 @@ MicroUds_Status_t MicroUdsServer_Init(void)
         return MICROUDS_ERR;
     }
 
-    MicroUdsServer_NoSubRegisterBuiltin(0x22, 0 ,MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND) | MICROUDS_SET_SESSION(MICROUDS_SESSION_DEFAULT),
-                            0,MICROUDS_DID_READ_REQ_MIN_LEN,0,MicroUdsServer_Did_0x22ReadHandler);
+    MicroUdsServer_NoSubRegisterBuiltin(0x22, 0, MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND) | MICROUDS_SET_SESSION(MICROUDS_SESSION_DEFAULT),
+                                        0, MICROUDS_DID_READ_REQ_MIN_LEN, 0, MicroUdsServer_Did_0x22ReadHandler);
 
-    MicroUdsServer_NoSubRegisterBuiltin(0x2E, 0 ,MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND) | MICROUDS_SET_SESSION(MICROUDS_SESSION_DEFAULT),
-                            0,MICROUDS_DID_WRITE_REQ_MIN_LEN,0,MicroUdsServer_Did_0x2EWriteHandler);
+    MicroUdsServer_NoSubRegisterBuiltin(0x2E, 0, MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND) | MICROUDS_SET_SESSION(MICROUDS_SESSION_DEFAULT),
+                                        0, MICROUDS_DID_WRITE_REQ_MIN_LEN, 0, MicroUdsServer_Did_0x2EWriteHandler);
 
     // 0x2C 请求里有子功能字节(01/02/03)，所以用带 HAS_SUBFUNC 的注册方式，子功能和抑制位由内核解析
     MicroUdsServer_RegisterBuiltin(0x2C, MICROUDS_SERV_FLAG_SUPPRESS,
-                            MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND),
-                            0,MICROUDS_DID_DYNA_REQ_MIN_LEN,0,MicroUdsServer_Did_0x2CDynamicHandler);
+                                   MICROUDS_SET_SESSION(MICROUDS_SESSION_PROGRAM) | MICROUDS_SET_SESSION(MICROUDS_SESSION_EXTEND),
+                                   0, MICROUDS_DID_DYNA_REQ_MIN_LEN, 0, MicroUdsServer_Did_0x2CDynamicHandler);
 #endif
 
     return MICROUDS_OK;

@@ -346,10 +346,15 @@ void MicroUdsServer_Did_0x22ReadHandler(MicroUdsServer_ServiceCtx_t *ctx)
 
     uint16_t did_size = (uint16_t)ctx->req_len; // 子功能长度 + 请求数据 [REVIEW] 0x22没有子功能，这里就是纯 DID 列表长度
 
-    if (did_size == 0u || (did_size % 2u) != 0u)
+    if (did_size == 0u || did_size < 2 /*|| (did_size % 2u) != 0u*/)
     {
         MicroUdsServer_CtxNegative(ctx, MICROUDS_NRC_IMLOI);
         return; // 返回负响应
+    }
+
+    if((did_size % 2) != 0)
+    {
+    	did_size -= 1;
     }
 
     uint16_t did_len = (uint16_t)(did_size / 2u); // / 2
